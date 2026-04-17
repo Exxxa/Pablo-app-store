@@ -1,0 +1,40 @@
+manifestVersion: 1
+id: sparkles-minecraft-java
+name: Minecraft Java Server
+tagline: Host your own Minecraft Java Edition server with a web control panel
+icon: icon.jpg
+category: Gaming
+version: "1.0.0"
+port: 25566
+description: >-
+  A full-featured Minecraft Java Edition server powered by itzg/minecraft-server,
+  with a built-in web-based control panel.
+
+
+  Manage your server from the browser: start, stop, and restart the server,
+  edit server.properties (MOTD, gamemode, difficulty, max players, whitelist,
+  PvP, online mode), manage the player whitelist, and stream live console logs
+  in real time.
+
+
+  The Minecraft server is exposed on port 25565 so players can connect directly
+  (e.g. via a tunnel). The control panel is available on port 25566 through your
+  Umbrel dashboard.
+
+developer: Pierre LOPEZ
+website: https://github.com/itzg/docker-minecraft-server
+submitter: Pierre LOPEZ
+submission: ""
+repo: https://github.com/itzg/docker-minecraft-server
+support: https://github.com/itzg/docker-minecraft-server/issues
+gallery:
+  - Minecraft_background_1.jpg
+  - Minecraft_background_2.jpg
+  - Minecraft_background_3.jpg
+releaseNotes: >-
+  Initial release with full server control panel, settings editor, whitelist
+  manager, and live console log streaming.
+dependencies: []
+path: ""
+defaultUsername: ""
+defaultPassword: ""
