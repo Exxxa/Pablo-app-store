@@ -14,6 +14,8 @@ services:
     environment:
       EULA: "TRUE"
       TYPE: VANILLA
+      VERSION: LATEST
+      MEMORY: 1G
     ports:
       - "25565:25565"
     volumes:

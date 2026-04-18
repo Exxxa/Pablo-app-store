@@ -8,454 +8,486 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg: #0f1117;
-      --surface: #1a1d27;
-      --surface2: #22263a;
-      --border: #2d3148;
-      --accent: #5c8aff;
-      --accent-hover: #7aa0ff;
-      --green: #4caf7d;
-      --red: #f25c5c;
-      --yellow: #f0c040;
-      --text: #e2e6f0;
-      --muted: #7a7f99;
-      --font: 'Segoe UI', system-ui, sans-serif;
+      --bg: #0d0f14;
+      --surface: #161920;
+      --surface2: #1e2130;
+      --surface3: #252840;
+      --border: #2a2e45;
+      --border2: #353a55;
+      --accent: #4f9e4f;
+      --accent-hover: #62b862;
+      --accent-dim: #1e3a1e;
+      --blue: #5c8aff;
+      --blue-dim: #1a2a5a;
+      --red: #e05555;
+      --red-dim: #3a1515;
+      --yellow: #d4a017;
+      --yellow-dim: #3a2c00;
+      --purple: #9b6fd4;
+      --purple-dim: #2a1a4a;
+      --text: #dde2f0;
+      --text2: #9aa0bc;
+      --muted: #5a6080;
+      --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
       --mono: 'Cascadia Code', 'Fira Mono', 'Consolas', monospace;
+      --radius: 8px;
     }
 
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--font);
-      min-height: 100vh;
-    }
+    body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; }
 
+    /* ── Header ── */
     header {
       background: var(--surface);
       border-bottom: 1px solid var(--border);
       padding: 0 24px;
       display: flex;
       align-items: center;
-      gap: 16px;
-      height: 56px;
+      gap: 14px;
+      height: 54px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
     }
 
-    header .logo {
-      font-size: 20px;
-      font-weight: 700;
-      letter-spacing: -0.3px;
-      color: var(--text);
+    .logo { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; display: flex; align-items: center; gap: 8px; }
+    .logo-icon { font-size: 22px; }
+    .logo-text { color: var(--text); }
+    .logo-text span { color: var(--accent); }
+
+    .header-spacer { flex: 1; }
+
+    /* ── Status badge ── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase;
+      padding: 4px 10px; border-radius: 20px;
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--muted);
     }
+    .badge .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
+    .badge.running { border-color: var(--accent); color: var(--accent); }
+    .badge.running .dot { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+    .badge.exited, .badge.stopped { border-color: var(--red); color: var(--red); }
+    .badge.exited .dot, .badge.stopped .dot { background: var(--red); }
+    .badge.restarting, .badge.starting { border-color: var(--yellow); color: var(--yellow); }
+    .badge.restarting .dot, .badge.starting .dot { background: var(--yellow); animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-    header .logo span { color: var(--accent); }
-
-    .status-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 12px;
-      font-weight: 600;
-      padding: 3px 10px;
-      border-radius: 20px;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .status-badge .dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: var(--muted);
-    }
-
-    .status-badge.running { border-color: var(--green); color: var(--green); }
-    .status-badge.running .dot { background: var(--green); box-shadow: 0 0 6px var(--green); }
-    .status-badge.exited, .status-badge.stopped { border-color: var(--red); color: var(--red); }
-    .status-badge.exited .dot, .status-badge.stopped .dot { background: var(--red); }
-    .status-badge.restarting { border-color: var(--yellow); color: var(--yellow); }
-    .status-badge.restarting .dot { background: var(--yellow); }
-
+    /* ── Nav tabs ── */
     nav {
-      display: flex;
-      gap: 4px;
-      padding: 16px 24px 0;
-      border-bottom: 1px solid var(--border);
       background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px;
+      display: flex;
+      gap: 2px;
+      overflow-x: auto;
     }
+    nav::-webkit-scrollbar { height: 0; }
 
     nav button {
-      background: none;
-      border: none;
-      color: var(--muted);
-      font-size: 14px;
-      font-weight: 500;
-      padding: 8px 16px;
-      cursor: pointer;
-      border-bottom: 2px solid transparent;
+      background: none; border: none; border-bottom: 2px solid transparent;
+      color: var(--text2); font-size: 13px; font-weight: 500;
+      padding: 12px 14px; cursor: pointer; white-space: nowrap;
       transition: color 0.15s, border-color 0.15s;
-      border-radius: 4px 4px 0 0;
     }
-
     nav button:hover { color: var(--text); }
-    nav button.active { color: var(--accent); border-bottom-color: var(--accent); }
+    nav button.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
 
-    main {
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 32px 24px;
-    }
-
+    /* ── Layout ── */
+    main { max-width: 960px; margin: 0 auto; padding: 28px 20px 60px; }
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
 
+    /* ── Cards ── */
     .card {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 24px;
-      margin-bottom: 20px;
+      border-radius: var(--radius);
+      padding: 20px 22px;
+      margin-bottom: 16px;
     }
 
-    .card h2 {
-      font-size: 15px;
-      font-weight: 600;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      margin-bottom: 20px;
+    .card-title {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.8px;
+      text-transform: uppercase; color: var(--muted);
+      margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
     }
+    .card-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
+    /* ── Info rows ── */
+    .info-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 7px; font-size: 14px; margin-bottom: 8px;
+    }
+    .info-row:last-child { margin-bottom: 0; }
+    .info-row .label { color: var(--text2); min-width: 140px; font-size: 13px; }
+    .info-row .value { color: var(--text); font-size: 13px; }
+    .info-row code { font-family: var(--mono); color: var(--blue); font-size: 13px; }
+
+    /* ── Buttons ── */
     .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 9px 18px;
-      border: none;
-      border-radius: 7px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: opacity 0.15s, transform 0.1s;
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 8px 16px; border: none; border-radius: 7px;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      transition: filter 0.15s, transform 0.1s;
     }
-
     .btn:active { transform: scale(0.97); }
-    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+    .btn:not(:disabled):hover { filter: brightness(1.1); }
 
-    .btn-green { background: var(--green); color: #fff; }
+    .btn-green { background: var(--accent); color: #fff; }
     .btn-red { background: var(--red); color: #fff; }
-    .btn-blue { background: var(--accent); color: #fff; }
+    .btn-blue { background: var(--blue); color: #fff; }
+    .btn-yellow { background: var(--yellow); color: #000; }
+    .btn-purple { background: var(--purple); color: #fff; }
     .btn-outline {
-      background: transparent;
-      border: 1px solid var(--border);
-      color: var(--text);
+      background: transparent; border: 1px solid var(--border2);
+      color: var(--text2);
     }
     .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
 
-    .btn-row {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
 
-    .info-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 12px 14px;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      font-size: 14px;
-      margin-bottom: 12px;
+    /* ── Warning / info banners ── */
+    .banner {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 12px 14px; border-radius: 7px;
+      font-size: 13px; margin-bottom: 18px; line-height: 1.5;
     }
+    .banner-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+    .banner-warn { background: var(--yellow-dim); border: 1px solid var(--yellow); color: var(--yellow); }
+    .banner-info { background: var(--blue-dim); border: 1px solid var(--blue); color: var(--blue); }
 
-    .info-row .label { color: var(--muted); min-width: 130px; }
-    .info-row code {
-      font-family: var(--mono);
-      color: var(--accent);
-      font-size: 13px;
+    /* ── Form fields ── */
+    .section-title {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.7px; text-transform: uppercase;
+      color: var(--muted); margin: 20px 0 12px; padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
     }
+    .section-title:first-child { margin-top: 0; }
 
-    /* Settings form */
-    .form-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-      gap: 16px;
-    }
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+    .form-grid-3 { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
 
     .form-field label {
-      display: block;
-      font-size: 12px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: var(--muted);
+      display: block; font-size: 12px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.5px; color: var(--text2);
       margin-bottom: 6px;
     }
+    .form-field .hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
 
     .form-field input[type="text"],
     .form-field input[type="number"],
-    .form-field select {
-      width: 100%;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      color: var(--text);
-      font-family: var(--font);
-      font-size: 14px;
-      padding: 8px 12px;
-      border-radius: 7px;
-      transition: border-color 0.15s;
+    .form-field select,
+    .form-field textarea {
+      width: 100%; background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); font-family: var(--font); font-size: 13px;
+      padding: 8px 12px; border-radius: 7px; transition: border-color 0.15s;
+    }
+    .form-field input:focus, .form-field select:focus, .form-field textarea:focus {
+      outline: none; border-color: var(--accent);
+    }
+    .form-field select option { background: var(--surface2); }
+
+    /* Memory presets */
+    .memory-presets { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+    .memory-btn {
+      padding: 5px 14px; border-radius: 5px; border: 1px solid var(--border2);
+      background: var(--surface2); color: var(--text2); font-size: 13px;
+      font-weight: 600; cursor: pointer; transition: all 0.15s;
+    }
+    .memory-btn:hover, .memory-btn.active {
+      border-color: var(--accent); color: var(--accent); background: var(--accent-dim);
     }
 
-    .form-field input:focus,
-    .form-field select:focus {
-      outline: none;
-      border-color: var(--accent);
-    }
-
+    /* ── Toggle rows ── */
+    .toggles { display: flex; flex-direction: column; gap: 8px; }
     .toggle-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 12px;
-      background: var(--surface2);
-      border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px; background: var(--surface2); border: 1px solid var(--border);
       border-radius: 7px;
     }
+    .toggle-label { font-size: 13px; color: var(--text); }
+    .toggle-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
 
-    .toggle-row .toggle-label {
-      font-size: 14px;
-      color: var(--text);
-    }
-
-    .toggle {
-      position: relative;
-      width: 44px;
-      height: 24px;
-      flex-shrink: 0;
-    }
-
+    .toggle { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
     .toggle input { opacity: 0; width: 0; height: 0; }
-
     .toggle-slider {
-      position: absolute;
-      inset: 0;
-      background: var(--border);
-      border-radius: 24px;
-      cursor: pointer;
-      transition: background 0.2s;
+      position: absolute; inset: 0; background: var(--border2); border-radius: 22px;
+      cursor: pointer; transition: background 0.2s;
     }
-
     .toggle-slider::before {
-      content: '';
-      position: absolute;
-      width: 18px;
-      height: 18px;
-      left: 3px;
-      top: 3px;
-      background: #fff;
-      border-radius: 50%;
+      content: ''; position: absolute; width: 16px; height: 16px;
+      left: 3px; top: 3px; background: #fff; border-radius: 50%;
       transition: transform 0.2s;
     }
-
     .toggle input:checked + .toggle-slider { background: var(--accent); }
-    .toggle input:checked + .toggle-slider::before { transform: translateX(20px); }
+    .toggle input:checked + .toggle-slider::before { transform: translateX(18px); }
 
-    /* Whitelist */
-    .whitelist-add {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 20px;
+    /* ── Modrinth section ── */
+    #modrinth-section { display: none; margin-top: 16px; }
+    #modrinth-section.visible { display: block; }
+
+    /* ── Worlds tab ── */
+    .world-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    .world-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 7px; transition: border-color 0.15s;
+    }
+    .world-item.active-world { border-color: var(--accent); }
+    .world-item-left { display: flex; align-items: center; gap: 10px; }
+    .world-icon { font-size: 20px; }
+    .world-name { font-size: 14px; font-weight: 600; color: var(--text); }
+    .active-chip {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+      padding: 2px 8px; border-radius: 10px; background: var(--accent-dim);
+      color: var(--accent); border: 1px solid var(--accent);
     }
 
+    /* ── Whitelist ── */
+    .whitelist-add { display: flex; gap: 8px; margin-bottom: 18px; }
     .whitelist-add input {
-      flex: 1;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      color: var(--text);
-      font-family: var(--font);
-      font-size: 14px;
-      padding: 9px 12px;
-      border-radius: 7px;
+      flex: 1; background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); font-family: var(--font); font-size: 13px;
+      padding: 8px 12px; border-radius: 7px;
     }
-
     .whitelist-add input:focus { outline: none; border-color: var(--accent); }
 
     .player-list { list-style: none; }
-
     .player-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 14px;
-      border-radius: 7px;
-      transition: background 0.1s;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 9px 12px; border-radius: 6px; transition: background 0.1s;
     }
-
     .player-item:hover { background: var(--surface2); }
-
-    .player-item .player-name {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 14px;
-    }
-
-    .player-avatar {
-      width: 28px;
-      height: 28px;
-      border-radius: 4px;
-      background: var(--surface2);
-      overflow: hidden;
-    }
-
+    .player-name-row { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+    .player-avatar { width: 28px; height: 28px; border-radius: 4px; background: var(--surface2); overflow: hidden; }
     .player-avatar img { width: 100%; height: 100%; }
-
     .btn-icon {
-      background: none;
-      border: none;
-      color: var(--muted);
-      cursor: pointer;
-      font-size: 16px;
-      padding: 4px 8px;
-      border-radius: 5px;
-      transition: background 0.1s, color 0.1s;
+      background: none; border: none; color: var(--muted); cursor: pointer;
+      font-size: 15px; padding: 4px 8px; border-radius: 5px; transition: background 0.1s, color 0.1s;
     }
+    .btn-icon:hover { background: var(--red-dim); color: var(--red); }
 
-    .btn-icon:hover { background: var(--surface2); color: var(--red); }
-
-    .empty-state {
-      text-align: center;
-      padding: 32px;
-      color: var(--muted);
-      font-size: 14px;
-    }
-
-    /* Console */
+    /* ── Console ── */
     #console-output {
-      background: #090b10;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 16px;
-      height: 460px;
-      overflow-y: auto;
-      font-family: var(--mono);
-      font-size: 13px;
-      line-height: 1.6;
-      white-space: pre-wrap;
-      word-break: break-word;
+      background: #080a10; border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 14px; height: 480px; overflow-y: auto;
+      font-family: var(--mono); font-size: 12px; line-height: 1.65;
+      white-space: pre-wrap; word-break: break-word;
     }
-
     .log-line { display: block; }
     .log-warn { color: var(--yellow); }
     .log-error { color: var(--red); }
-    .log-join { color: var(--green); }
-    .log-default { color: #b0b8d0; }
+    .log-join { color: var(--accent); }
+    .log-default { color: #8a95b8; }
 
     .console-toolbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
     }
-
-    .ws-status {
-      font-size: 12px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      color: var(--muted);
-    }
-
-    .ws-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: var(--muted);
-    }
-
-    .ws-dot.connected { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .ws-status { font-size: 12px; display: flex; align-items: center; gap: 6px; color: var(--muted); }
+    .ws-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
+    .ws-dot.connected { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
     .ws-dot.disconnected { background: var(--red); }
 
-    .toast {
-      position: fixed;
-      bottom: 24px;
-      right: 24px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 12px 18px;
-      font-size: 14px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-      opacity: 0;
-      transform: translateY(8px);
-      transition: opacity 0.2s, transform 0.2s;
-      pointer-events: none;
-      z-index: 100;
-      max-width: 320px;
+    /* ── Empty state ── */
+    .empty-state {
+      text-align: center; padding: 36px 20px; color: var(--muted); font-size: 14px;
     }
+    .empty-state .empty-icon { font-size: 36px; margin-bottom: 12px; display: block; }
 
+    /* ── Toast ── */
+    .toast {
+      position: fixed; bottom: 24px; right: 24px; z-index: 200;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 12px 18px; font-size: 13px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+      opacity: 0; transform: translateY(8px);
+      transition: opacity 0.2s, transform 0.2s; pointer-events: none; max-width: 340px;
+    }
     .toast.show { opacity: 1; transform: translateY(0); }
-    .toast.success { border-color: var(--green); color: var(--green); }
+    .toast.success { border-color: var(--accent); color: var(--accent); }
     .toast.error { border-color: var(--red); color: var(--red); }
+    .toast.info { border-color: var(--blue); color: var(--blue); }
+
+    /* ── Divider ── */
+    .mt { margin-top: 20px; }
   </style>
 </head>
 <body>
 
 <header>
-  <div class="logo">⛏ <span>Minecraft</span> Server</div>
-  <div class="status-badge" id="header-status">
-    <div class="dot"></div>
-    <span id="header-status-text">Loading…</span>
+  <div class="logo">
+    <span class="logo-icon">⛏</span>
+    <span class="logo-text"><span>Minecraft</span> Server</span>
   </div>
+  <div class="header-spacer"></div>
+  <div class="badge" id="header-badge"><div class="dot"></div><span id="header-status-text">Loading…</span></div>
 </header>
 
 <nav>
-  <button class="active" onclick="switchTab('control', this)">Server Control</button>
-  <button onclick="switchTab('settings', this)">Settings</button>
+  <button class="active" onclick="switchTab('control', this)">Control</button>
+  <button onclick="switchTab('config', this)">Server Config</button>
+  <button onclick="switchTab('worlds', this)">Worlds</button>
+  <button onclick="switchTab('properties', this)">Properties</button>
   <button onclick="switchTab('whitelist', this)">Whitelist</button>
   <button onclick="switchTab('console', this)">Console</button>
 </nav>
 
 <main>
 
-  <!-- SERVER CONTROL -->
+  <!-- ═══ CONTROL ═══ -->
   <div class="tab-panel active" id="tab-control">
     <div class="card">
-      <h2>Server Status</h2>
+      <div class="card-title">Server Status</div>
       <div class="info-row">
         <span class="label">Status</span>
-        <div class="status-badge" id="status-badge"><div class="dot"></div><span id="status-text">—</span></div>
+        <div class="badge" id="status-badge"><div class="dot"></div><span id="status-text">—</span></div>
       </div>
       <div class="info-row">
-        <span class="label">Connection Address</span>
+        <span class="label">Connect</span>
         <code id="connection-address">—</code>
       </div>
       <div class="info-row">
         <span class="label">Last Started</span>
-        <span id="started-at">—</span>
+        <span class="value" id="started-at">—</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Image</span>
+        <span class="value" id="image-name" style="font-family:var(--mono);font-size:12px;color:var(--text2)">—</span>
       </div>
     </div>
 
     <div class="card">
-      <h2>Controls</h2>
+      <div class="card-title">Controls</div>
       <div class="btn-row">
         <button class="btn btn-green" id="btn-start" onclick="serverAction('start')">▶ Start</button>
         <button class="btn btn-red" id="btn-stop" onclick="serverAction('stop')">■ Stop</button>
         <button class="btn btn-outline" id="btn-restart" onclick="serverAction('restart')">↺ Restart</button>
       </div>
     </div>
+
+    <div class="card">
+      <div class="card-title">Update Server</div>
+      <div class="banner banner-info">
+        <span class="banner-icon">ℹ</span>
+        Pulls the latest <code style="font-family:var(--mono);font-size:12px">itzg/minecraft-server</code> Docker image then recreates the container. Your world data is preserved. This may take 1–2 minutes.
+      </div>
+      <button class="btn btn-blue" id="btn-update" onclick="updateServer()">⬇ Pull Update & Restart</button>
+    </div>
   </div>
 
-  <!-- SETTINGS -->
-  <div class="tab-panel" id="tab-settings">
+  <!-- ═══ SERVER CONFIG ═══ -->
+  <div class="tab-panel" id="tab-config">
     <div class="card">
-      <h2>Server Properties</h2>
-      <p style="font-size:13px;color:var(--muted);margin-bottom:20px;">
-        Changes are written to <code style="color:var(--accent)">server.properties</code>. Restart the server to apply them.
-      </p>
+      <div class="card-title">Server Configuration</div>
+
+      <div class="banner banner-warn">
+        <span class="banner-icon">⚠</span>
+        Changes here recreate the Minecraft container. The server will be offline for ~15 seconds. World data is never deleted.
+      </div>
+
+      <div class="section-title">Server Type & Version</div>
+      <div class="form-grid">
+        <div class="form-field">
+          <label>Server Type</label>
+          <select id="cfg-type" onchange="onTypeChange()">
+            <option value="VANILLA">Vanilla</option>
+            <option value="PAPER">Paper (recommended)</option>
+            <option value="PURPUR">Purpur</option>
+            <option value="FABRIC">Fabric</option>
+            <option value="FORGE">Forge</option>
+            <option value="MODRINTH">Modrinth Modpack</option>
+          </select>
+          <div class="hint">Paper/Purpur offer better performance than Vanilla</div>
+        </div>
+        <div class="form-field">
+          <label>Minecraft Version</label>
+          <input type="text" id="cfg-version" placeholder="LATEST" />
+          <div class="hint">LATEST, SNAPSHOT, or specific (e.g. 1.21.1)</div>
+        </div>
+      </div>
+
+      <div id="modrinth-section">
+        <div class="section-title">Modrinth Modpack</div>
+        <div class="form-grid">
+          <div class="form-field">
+            <label>Modpack Slug, ID, or URL</label>
+            <input type="text" id="cfg-modpack" placeholder="e.g. fabulously-optimized" />
+            <div class="hint">Slug from modrinth.com/modpack/… or full URL</div>
+          </div>
+          <div class="form-field">
+            <label>Mod Loader</label>
+            <select id="cfg-loader">
+              <option value="">Auto-detect</option>
+              <option value="fabric">Fabric</option>
+              <option value="forge">Forge</option>
+              <option value="quilt">Quilt</option>
+              <option value="neoforge">NeoForge</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Release Type</label>
+            <select id="cfg-modpack-version-type">
+              <option value="release">Release only</option>
+              <option value="beta">Beta & above</option>
+              <option value="alpha">Alpha & above</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title">Memory & Performance</div>
+      <div class="form-field" style="max-width:360px">
+        <label>Server Memory</label>
+        <div class="memory-presets">
+          <button class="memory-btn" onclick="setMemory('1G')">1 GB</button>
+          <button class="memory-btn" onclick="setMemory('2G')">2 GB</button>
+          <button class="memory-btn" onclick="setMemory('4G')">4 GB</button>
+          <button class="memory-btn" onclick="setMemory('8G')">8 GB</button>
+        </div>
+        <input type="text" id="cfg-memory" placeholder="e.g. 2G or 2048M" oninput="syncMemoryPresets()" />
+        <div class="hint">Sets both initial and max heap. Recommended: 2G minimum</div>
+      </div>
+
+      <div class="toggles mt">
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Aikar's GC Flags</div>
+            <div class="toggle-sub">Optimized garbage collection — highly recommended for servers with 12GB+ RAM</div>
+          </div>
+          <label class="toggle"><input type="checkbox" id="cfg-aikar" /><div class="toggle-slider"></div></label>
+        </div>
+      </div>
+
+      <div class="mt">
+        <button class="btn btn-green" id="btn-apply-config" onclick="applyConfig()">Apply & Recreate Container</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ WORLDS ═══ -->
+  <div class="tab-panel" id="tab-worlds">
+    <div class="card">
+      <div class="card-title">World Saves</div>
+      <div class="banner banner-info">
+        <span class="banner-icon">ℹ</span>
+        Switching the active world recreates the container with the new world name. The server will restart. Old worlds are never deleted.
+      </div>
+      <ul class="world-list" id="world-list">
+        <li class="empty-state"><span class="empty-icon">🌍</span>Loading worlds…</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ═══ PROPERTIES ═══ -->
+  <div class="tab-panel" id="tab-properties">
+    <div class="card">
+      <div class="card-title">Server Properties</div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:18px">Written to <code style="font-family:var(--mono);color:var(--blue)">server.properties</code>. Restart the server to apply.</p>
+
+      <div class="section-title">Identity</div>
       <div class="form-grid">
         <div class="form-field">
           <label>Server Name</label>
@@ -465,6 +497,10 @@
           <label>MOTD</label>
           <input type="text" id="s-motd" placeholder="A Minecraft Server" />
         </div>
+      </div>
+
+      <div class="section-title">Gameplay</div>
+      <div class="form-grid">
         <div class="form-field">
           <label>Gamemode</label>
           <select id="s-gamemode">
@@ -485,58 +521,133 @@
         </div>
         <div class="form-field">
           <label>Max Players</label>
-          <input type="number" id="s-max-players" min="1" max="100" placeholder="20" />
+          <input type="number" id="s-max-players" min="1" max="999" />
+        </div>
+        <div class="form-field">
+          <label>Player Idle Timeout (min)</label>
+          <input type="number" id="s-player-idle-timeout" min="0" />
+          <div class="hint">0 = never kick idle players</div>
         </div>
       </div>
 
-      <div style="display:flex;flex-direction:column;gap:10px;margin-top:20px;">
+      <div class="section-title">World Generation</div>
+      <div class="form-grid">
+        <div class="form-field">
+          <label>Level Seed</label>
+          <input type="text" id="s-level-seed" placeholder="Leave blank for random" />
+          <div class="hint">Only applies to new worlds</div>
+        </div>
+        <div class="form-field">
+          <label>Level Type</label>
+          <select id="s-level-type">
+            <option value="minecraft:normal">Normal</option>
+            <option value="minecraft:flat">Flat</option>
+            <option value="minecraft:large_biomes">Large Biomes</option>
+            <option value="minecraft:amplified">Amplified</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="section-title">Render Distance</div>
+      <div class="form-grid-3">
+        <div class="form-field">
+          <label>View Distance</label>
+          <input type="number" id="s-view-distance" min="2" max="32" />
+          <div class="hint">Chunks loaded around player</div>
+        </div>
+        <div class="form-field">
+          <label>Simulation Distance</label>
+          <input type="number" id="s-simulation-distance" min="2" max="32" />
+          <div class="hint">Entity tick range</div>
+        </div>
+        <div class="form-field">
+          <label>Spawn Protection</label>
+          <input type="number" id="s-spawn-protection" min="0" />
+          <div class="hint">0 = disabled</div>
+        </div>
+      </div>
+
+      <div class="section-title">Toggles</div>
+      <div class="toggles">
+        <div class="toggle-row">
+          <span class="toggle-label">PvP Enabled</span>
+          <label class="toggle"><input type="checkbox" id="s-pvp" /><div class="toggle-slider"></div></label>
+        </div>
         <div class="toggle-row">
           <span class="toggle-label">Whitelist Enabled</span>
           <label class="toggle"><input type="checkbox" id="s-white-list" /><div class="toggle-slider"></div></label>
         </div>
         <div class="toggle-row">
-          <span class="toggle-label">Online Mode (auth with Mojang)</span>
+          <span class="toggle-label">Online Mode (Mojang auth)</span>
           <label class="toggle"><input type="checkbox" id="s-online-mode" /><div class="toggle-slider"></div></label>
         </div>
         <div class="toggle-row">
-          <span class="toggle-label">PvP Enabled</span>
-          <label class="toggle"><input type="checkbox" id="s-pvp" /><div class="toggle-slider"></div></label>
+          <span class="toggle-label">Hardcore Mode</span>
+          <label class="toggle"><input type="checkbox" id="s-hardcore" /><div class="toggle-slider"></div></label>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-label">Allow Flight</span>
+          <label class="toggle"><input type="checkbox" id="s-allow-flight" /><div class="toggle-slider"></div></label>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-label">Allow Nether</span>
+          <label class="toggle"><input type="checkbox" id="s-allow-nether" /><div class="toggle-slider"></div></label>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-label">Spawn Monsters</span>
+          <label class="toggle"><input type="checkbox" id="s-spawn-monsters" /><div class="toggle-slider"></div></label>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-label">Spawn Animals</span>
+          <label class="toggle"><input type="checkbox" id="s-spawn-animals" /><div class="toggle-slider"></div></label>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-label">Spawn Villagers</span>
+          <label class="toggle"><input type="checkbox" id="s-spawn-npcs" /><div class="toggle-slider"></div></label>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-label">Force Gamemode on Join</span>
+          <label class="toggle"><input type="checkbox" id="s-force-gamemode" /><div class="toggle-slider"></div></label>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-label">Block Proxy Connections</span>
+          <label class="toggle"><input type="checkbox" id="s-prevent-proxy-connections" /><div class="toggle-slider"></div></label>
         </div>
       </div>
 
-      <div style="margin-top:24px;">
-        <button class="btn btn-blue" onclick="saveSettings()">Save Settings</button>
+      <div class="mt">
+        <button class="btn btn-green" onclick="saveSettings()">Save Properties</button>
       </div>
     </div>
   </div>
 
-  <!-- WHITELIST -->
+  <!-- ═══ WHITELIST ═══ -->
   <div class="tab-panel" id="tab-whitelist">
     <div class="card">
-      <h2>Whitelist</h2>
+      <div class="card-title">Whitelist</div>
       <div class="whitelist-add">
         <input type="text" id="whitelist-input" placeholder="Player name (e.g. Notch)" maxlength="16"
                onkeydown="if(event.key==='Enter') addToWhitelist()" />
-        <button class="btn btn-blue" onclick="addToWhitelist()">Add Player</button>
+        <button class="btn btn-green" onclick="addToWhitelist()">Add Player</button>
       </div>
       <ul class="player-list" id="player-list">
-        <li class="empty-state">Loading whitelist…</li>
+        <li class="empty-state"><span class="empty-icon">👤</span>Loading whitelist…</li>
       </ul>
     </div>
   </div>
 
-  <!-- CONSOLE -->
+  <!-- ═══ CONSOLE ═══ -->
   <div class="tab-panel" id="tab-console">
     <div class="card">
-      <h2>Live Console</h2>
+      <div class="card-title">Live Console</div>
       <div class="console-toolbar">
         <div class="ws-status">
           <div class="ws-dot disconnected" id="ws-dot"></div>
           <span id="ws-status-text">Disconnected</span>
         </div>
         <div class="btn-row">
-          <button class="btn btn-outline" style="padding:5px 12px;font-size:13px;" onclick="clearConsole()">Clear</button>
-          <button class="btn btn-outline" style="padding:5px 12px;font-size:13px;" onclick="reconnectWs()">Reconnect</button>
+          <button class="btn btn-outline" style="padding:5px 12px" onclick="clearConsole()">Clear</button>
+          <button class="btn btn-outline" style="padding:5px 12px" onclick="reconnectWs()">Reconnect</button>
         </div>
       </div>
       <div id="console-output"></div>
@@ -558,136 +669,285 @@
     document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
     document.getElementById('tab-' + id).classList.add('active');
     btn.classList.add('active');
-
-    if (id === 'console' && (!ws || ws.readyState === WebSocket.CLOSED)) {
-      connectWs();
-    }
+    if (id === 'console' && (!ws || ws.readyState === WebSocket.CLOSED)) connectWs();
     if (id === 'whitelist') loadWhitelist();
-    if (id === 'settings') loadSettings();
+    if (id === 'properties') loadSettings();
+    if (id === 'config') loadMcConfig();
+    if (id === 'worlds') loadWorlds();
   }
 
   // ── Toast ──────────────────────────────────────────────────────────────────
+  let toastTimer;
   function showToast(msg, type = 'success') {
     const el = document.getElementById('toast');
     el.textContent = msg;
     el.className = `toast ${type} show`;
-    setTimeout(() => { el.classList.remove('show'); }, 3000);
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 3500);
   }
 
   // ── Status polling ─────────────────────────────────────────────────────────
   async function pollStatus() {
     try {
-      const res = await fetch('/api/status');
-      const data = await res.json();
-      updateStatus(data);
-    } catch (_) {
+      const r = await fetch('/api/status');
+      updateStatus(await r.json());
+    } catch {
       updateStatus({ status: 'unreachable', running: false });
     }
   }
 
-  function updateStatus(data) {
-    const badge = document.getElementById('status-badge');
-    const text = document.getElementById('status-text');
-    const headerBadge = document.getElementById('header-status');
-    const headerText = document.getElementById('header-status-text');
-
-    badge.className = `status-badge ${data.status}`;
-    text.textContent = data.status || 'unknown';
-    headerBadge.className = `status-badge ${data.status}`;
-    headerText.textContent = data.status || 'unknown';
-
+  function updateStatus(d) {
+    const st = d.status || 'unknown';
+    document.getElementById('header-badge').className = `badge ${st}`;
+    document.getElementById('header-status-text').textContent = st;
+    document.getElementById('status-badge').className = `badge ${st}`;
+    document.getElementById('status-text').textContent = st;
     document.getElementById('started-at').textContent =
-      data.startedAt ? new Date(data.startedAt).toLocaleString() : '—';
-
-    const addr = document.getElementById('connection-address');
-    addr.textContent = data.running ? `${location.hostname}:25565` : '— server offline —';
+      d.startedAt ? new Date(d.startedAt).toLocaleString() : '—';
+    document.getElementById('connection-address').textContent =
+      d.running ? `${location.hostname}:25565` : '— server offline —';
+    document.getElementById('image-name').textContent = d.image || '—';
   }
 
   // ── Server controls ────────────────────────────────────────────────────────
   async function serverAction(action) {
     const btn = document.getElementById('btn-' + action);
-    if (btn) btn.disabled = true;
+    if (btn) { btn.disabled = true; btn.textContent = '…'; }
     try {
-      const res = await fetch('/api/server/' + action, { method: 'POST' });
-      const data = await res.json();
-      if (data.success) {
-        showToast(`Server ${action} command sent`);
-        setTimeout(pollStatus, 1500);
-      } else {
-        showToast(data.error || 'Command failed', 'error');
-      }
+      const r = await fetch('/api/server/' + action, { method: 'POST' });
+      const d = await r.json();
+      if (d.success) { showToast(`Server ${action} sent`); setTimeout(pollStatus, 1800); }
+      else showToast(d.error || 'Command failed', 'error');
     } catch (err) {
       showToast('Request failed: ' + err.message, 'error');
     } finally {
-      if (btn) btn.disabled = false;
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = action === 'start' ? '▶ Start' : action === 'stop' ? '■ Stop' : '↺ Restart';
+      }
     }
   }
 
-  // ── Settings ───────────────────────────────────────────────────────────────
+  async function updateServer() {
+    const btn = document.getElementById('btn-update');
+    btn.disabled = true;
+    btn.textContent = '⬇ Pulling image… (may take 1–2 min)';
+    showToast('Pulling latest image — please wait…', 'info');
+    try {
+      const r = await fetch('/api/server/update', { method: 'POST' });
+      const d = await r.json();
+      if (d.success) { showToast('Update complete — server restarted'); setTimeout(pollStatus, 2000); }
+      else showToast(d.error || 'Update failed', 'error');
+    } catch (err) {
+      showToast('Update failed: ' + err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '⬇ Pull Update & Restart';
+    }
+  }
+
+  // ── Server Config (mc-config) ──────────────────────────────────────────────
+  async function loadMcConfig() {
+    try {
+      const r = await fetch('/api/mc-config');
+      const cfg = await r.json();
+      document.getElementById('cfg-type').value = cfg.TYPE || 'VANILLA';
+      document.getElementById('cfg-version').value = cfg.VERSION || 'LATEST';
+      document.getElementById('cfg-memory').value = cfg.MEMORY || '1G';
+      document.getElementById('cfg-aikar').checked = cfg.USE_AIKAR_FLAGS === 'true';
+      document.getElementById('cfg-modpack').value = cfg.MODRINTH_MODPACK || '';
+      document.getElementById('cfg-loader').value = cfg.MODRINTH_LOADER || '';
+      document.getElementById('cfg-modpack-version-type').value = cfg.MODRINTH_MODPACK_VERSION_TYPE || 'release';
+      syncMemoryPresets();
+      onTypeChange();
+    } catch (err) {
+      showToast('Failed to load config', 'error');
+    }
+  }
+
+  function onTypeChange() {
+    const type = document.getElementById('cfg-type').value;
+    const sec = document.getElementById('modrinth-section');
+    type === 'MODRINTH' ? sec.classList.add('visible') : sec.classList.remove('visible');
+  }
+
+  function setMemory(val) {
+    document.getElementById('cfg-memory').value = val;
+    syncMemoryPresets();
+  }
+
+  function syncMemoryPresets() {
+    const val = document.getElementById('cfg-memory').value.toUpperCase();
+    document.querySelectorAll('.memory-btn').forEach(b => {
+      b.classList.toggle('active', b.textContent.replace(' GB', 'G') === val ||
+        b.textContent.replace(' GB', 'G').replace('G', '') + 'G' === val);
+    });
+  }
+
+  async function applyConfig() {
+    const btn = document.getElementById('btn-apply-config');
+    btn.disabled = true;
+    btn.textContent = '⏳ Recreating container…';
+    try {
+      const body = {
+        TYPE: document.getElementById('cfg-type').value,
+        VERSION: document.getElementById('cfg-version').value || 'LATEST',
+        MEMORY: document.getElementById('cfg-memory').value || '1G',
+        USE_AIKAR_FLAGS: document.getElementById('cfg-aikar').checked ? 'true' : 'false',
+        MODRINTH_MODPACK: document.getElementById('cfg-modpack').value,
+        MODRINTH_LOADER: document.getElementById('cfg-loader').value,
+        MODRINTH_MODPACK_VERSION_TYPE: document.getElementById('cfg-modpack-version-type').value,
+      };
+      const r = await fetch('/api/mc-config', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+      });
+      const d = await r.json();
+      if (d.success) { showToast('Config applied — server restarted'); setTimeout(pollStatus, 2000); }
+      else showToast(d.error || 'Apply failed', 'error');
+    } catch (err) {
+      showToast('Apply failed: ' + err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Apply & Recreate Container';
+    }
+  }
+
+  // ── Worlds ─────────────────────────────────────────────────────────────────
+  async function loadWorlds() {
+    try {
+      const r = await fetch('/api/worlds');
+      const { worlds, active } = await r.json();
+      const list = document.getElementById('world-list');
+      if (!worlds.length) {
+        list.innerHTML = '<li class="empty-state"><span class="empty-icon">🌍</span>No world saves found yet.<br>Start the server to generate one.</li>';
+        return;
+      }
+      list.innerHTML = worlds.map(w => `
+        <li class="world-item ${w === active ? 'active-world' : ''}">
+          <div class="world-item-left">
+            <span class="world-icon">${w === active ? '🌟' : '🌍'}</span>
+            <span class="world-name">${escHtml(w)}</span>
+            ${w === active ? '<span class="active-chip">Active</span>' : ''}
+          </div>
+          ${w !== active ? `<button class="btn btn-outline" onclick="setActiveWorld('${escHtml(w)}')">Set Active</button>` : ''}
+        </li>
+      `).join('');
+    } catch (err) {
+      showToast('Failed to load worlds', 'error');
+    }
+  }
+
+  async function setActiveWorld(name) {
+    if (!confirm(`Switch to world "${name}"? The server will restart.`)) return;
+    try {
+      const r = await fetch('/api/mc-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ LEVEL: name }),
+      });
+      const d = await r.json();
+      if (d.success) { showToast(`World set to "${name}" — server restarted`); loadWorlds(); setTimeout(pollStatus, 2000); }
+      else showToast(d.error || 'Failed', 'error');
+    } catch (err) {
+      showToast('Request failed: ' + err.message, 'error');
+    }
+  }
+
+  // ── Properties ─────────────────────────────────────────────────────────────
   async function loadSettings() {
     try {
-      const res = await fetch('/api/settings');
-      const s = await res.json();
-      document.getElementById('s-server-name').value = s['server-name'] || '';
-      document.getElementById('s-motd').value = s['motd'] || '';
-      document.getElementById('s-gamemode').value = s['gamemode'] || 'survival';
-      document.getElementById('s-difficulty').value = s['difficulty'] || 'easy';
-      document.getElementById('s-max-players').value = s['max-players'] || '20';
-      document.getElementById('s-white-list').checked = s['white-list'] === 'true';
-      document.getElementById('s-online-mode').checked = s['online-mode'] !== 'false';
-      document.getElementById('s-pvp').checked = s['pvp'] !== 'false';
-    } catch (err) {
-      showToast('Failed to load settings', 'error');
-    }
+      const r = await fetch('/api/settings');
+      const s = await r.json();
+      const set = (id, key) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (el.type === 'checkbox') el.checked = s[key] === 'true';
+        else el.value = s[key] ?? '';
+      };
+      set('s-server-name', 'server-name');
+      set('s-motd', 'motd');
+      set('s-gamemode', 'gamemode');
+      set('s-difficulty', 'difficulty');
+      set('s-max-players', 'max-players');
+      set('s-player-idle-timeout', 'player-idle-timeout');
+      set('s-level-seed', 'level-seed');
+      set('s-level-type', 'level-type');
+      set('s-view-distance', 'view-distance');
+      set('s-simulation-distance', 'simulation-distance');
+      set('s-spawn-protection', 'spawn-protection');
+      set('s-pvp', 'pvp');
+      set('s-white-list', 'white-list');
+      set('s-online-mode', 'online-mode');
+      set('s-hardcore', 'hardcore');
+      set('s-allow-flight', 'allow-flight');
+      set('s-allow-nether', 'allow-nether');
+      set('s-spawn-monsters', 'spawn-monsters');
+      set('s-spawn-animals', 'spawn-animals');
+      set('s-spawn-npcs', 'spawn-npcs');
+      set('s-force-gamemode', 'force-gamemode');
+      set('s-prevent-proxy-connections', 'prevent-proxy-connections');
+    } catch { showToast('Failed to load properties', 'error'); }
   }
 
   async function saveSettings() {
+    const get = (id) => {
+      const el = document.getElementById(id);
+      if (!el) return undefined;
+      return el.type === 'checkbox' ? (el.checked ? 'true' : 'false') : el.value;
+    };
     const body = {
-      'server-name': document.getElementById('s-server-name').value,
-      'motd': document.getElementById('s-motd').value,
-      'gamemode': document.getElementById('s-gamemode').value,
-      'difficulty': document.getElementById('s-difficulty').value,
-      'max-players': document.getElementById('s-max-players').value,
-      'white-list': document.getElementById('s-white-list').checked ? 'true' : 'false',
-      'online-mode': document.getElementById('s-online-mode').checked ? 'true' : 'false',
-      'pvp': document.getElementById('s-pvp').checked ? 'true' : 'false',
+      'server-name': get('s-server-name'),
+      'motd': get('s-motd'),
+      'gamemode': get('s-gamemode'),
+      'difficulty': get('s-difficulty'),
+      'max-players': get('s-max-players'),
+      'player-idle-timeout': get('s-player-idle-timeout'),
+      'level-seed': get('s-level-seed'),
+      'level-type': get('s-level-type'),
+      'view-distance': get('s-view-distance'),
+      'simulation-distance': get('s-simulation-distance'),
+      'spawn-protection': get('s-spawn-protection'),
+      'pvp': get('s-pvp'),
+      'white-list': get('s-white-list'),
+      'online-mode': get('s-online-mode'),
+      'hardcore': get('s-hardcore'),
+      'allow-flight': get('s-allow-flight'),
+      'allow-nether': get('s-allow-nether'),
+      'spawn-monsters': get('s-spawn-monsters'),
+      'spawn-animals': get('s-spawn-animals'),
+      'spawn-npcs': get('s-spawn-npcs'),
+      'force-gamemode': get('s-force-gamemode'),
+      'prevent-proxy-connections': get('s-prevent-proxy-connections'),
     };
     try {
-      const res = await fetch('/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+      const r = await fetch('/api/settings', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
       });
-      const data = await res.json();
-      if (data.success) showToast('Settings saved — restart server to apply');
-      else showToast(data.error || 'Save failed', 'error');
-    } catch (err) {
-      showToast('Save failed: ' + err.message, 'error');
-    }
+      const d = await r.json();
+      if (d.success) showToast('Properties saved — restart server to apply');
+      else showToast(d.error || 'Save failed', 'error');
+    } catch (err) { showToast('Save failed: ' + err.message, 'error'); }
   }
 
   // ── Whitelist ──────────────────────────────────────────────────────────────
   async function loadWhitelist() {
     try {
-      const res = await fetch('/api/whitelist');
-      const list = await res.json();
-      renderWhitelist(list);
-    } catch (err) {
-      showToast('Failed to load whitelist', 'error');
-    }
+      const r = await fetch('/api/whitelist');
+      renderWhitelist(await r.json());
+    } catch { showToast('Failed to load whitelist', 'error'); }
   }
 
   function renderWhitelist(list) {
     const el = document.getElementById('player-list');
     if (!list.length) {
-      el.innerHTML = '<li class="empty-state">No players on whitelist</li>';
+      el.innerHTML = '<li class="empty-state"><span class="empty-icon">👤</span>No players on whitelist</li>';
       return;
     }
     el.innerHTML = list.map(p => `
       <li class="player-item">
-        <div class="player-name">
+        <div class="player-name-row">
           <div class="player-avatar">
-            <img src="https://mc-heads.net/avatar/${encodeURIComponent(p.name)}/28" alt="${p.name}"
+            <img src="https://mc-heads.net/avatar/${encodeURIComponent(p.name)}/28" alt="${escHtml(p.name)}"
                  onerror="this.style.display='none'" loading="lazy" />
           </div>
           ${escHtml(p.name)}
@@ -702,62 +962,39 @@
     const name = input.value.trim();
     if (!name) return;
     try {
-      const res = await fetch('/api/whitelist/add', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name }),
+      const r = await fetch('/api/whitelist/add', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }),
       });
-      const data = await res.json();
-      if (data.success) {
-        input.value = '';
-        showToast(`${name} added to whitelist`);
-        loadWhitelist();
-      } else {
-        showToast(data.error || 'Add failed', 'error');
-      }
-    } catch (err) {
-      showToast('Request failed', 'error');
-    }
+      const d = await r.json();
+      if (d.success) { input.value = ''; showToast(`${name} added`); loadWhitelist(); }
+      else showToast(d.error || 'Add failed', 'error');
+    } catch { showToast('Request failed', 'error'); }
   }
 
   async function removeFromWhitelist(name) {
     try {
-      const res = await fetch('/api/whitelist/' + encodeURIComponent(name), { method: 'DELETE' });
-      const data = await res.json();
-      if (data.success) {
-        showToast(`${name} removed`);
-        loadWhitelist();
-      } else {
-        showToast(data.error || 'Remove failed', 'error');
-      }
-    } catch (err) {
-      showToast('Request failed', 'error');
-    }
+      const r = await fetch('/api/whitelist/' + encodeURIComponent(name), { method: 'DELETE' });
+      const d = await r.json();
+      if (d.success) { showToast(`${name} removed`); loadWhitelist(); }
+      else showToast(d.error || 'Remove failed', 'error');
+    } catch { showToast('Request failed', 'error'); }
   }
 
-  // ── Console / WebSocket ────────────────────────────────────────────────────
+  // ── Console ────────────────────────────────────────────────────────────────
   function connectWs() {
     if (ws && ws.readyState === WebSocket.OPEN) return;
     clearTimeout(wsReconnectTimer);
-
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
     ws = new WebSocket(`${proto}//${location.host}/logs`);
-
     setWsStatus('connecting', 'Connecting…');
-
     ws.onopen = () => setWsStatus('connected', 'Connected');
-
-    ws.onmessage = (evt) => appendLog(evt.data);
-
+    ws.onmessage = (e) => appendLog(e.data);
     ws.onclose = () => {
       setWsStatus('disconnected', 'Disconnected');
       wsReconnectTimer = setTimeout(() => {
-        if (document.getElementById('tab-console').classList.contains('active')) {
-          connectWs();
-        }
+        if (document.getElementById('tab-console').classList.contains('active')) connectWs();
       }, 5000);
     };
-
     ws.onerror = () => setWsStatus('disconnected', 'Error');
   }
 
@@ -766,28 +1003,20 @@
     connectWs();
   }
 
-  function clearConsole() {
-    document.getElementById('console-output').innerHTML = '';
-  }
+  function clearConsole() { document.getElementById('console-output').innerHTML = ''; }
 
   function setWsStatus(state, label) {
-    const dot = document.getElementById('ws-dot');
-    dot.className = 'ws-dot ' + state;
+    document.getElementById('ws-dot').className = 'ws-dot ' + state;
     document.getElementById('ws-status-text').textContent = label;
   }
 
   function appendLog(raw) {
     const out = document.getElementById('console-output');
-    const line = document.createElement('span');
-    line.className = 'log-line ' + classifyLog(raw);
-    line.textContent = raw;
-    out.appendChild(line);
-
-    // Trim old lines
-    while (out.children.length > MAX_LOG_LINES) {
-      out.removeChild(out.firstChild);
-    }
-
+    const span = document.createElement('span');
+    span.className = 'log-line ' + classifyLog(raw);
+    span.textContent = raw;
+    out.appendChild(span);
+    while (out.children.length > MAX_LOG_LINES) out.removeChild(out.firstChild);
     out.scrollTop = out.scrollHeight;
   }
 
@@ -799,8 +1028,8 @@
     return 'log-default';
   }
 
-  function escHtml(str) {
-    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  function escHtml(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
   // ── Bootstrap ──────────────────────────────────────────────────────────────
