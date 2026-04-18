@@ -10,7 +10,7 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ server, path: '/logs' });
 const docker = new Docker({ socketPath: '/var/run/docker.sock' });
 
-const CONTAINER_NAME = process.env.MINECRAFT_CONTAINER || 'Minecraft-server-app_minecraft_1';
+const CONTAINER_NAME = process.env.MINECRAFT_CONTAINER || 'sparkles-minecraft-server_minecraft_1';
 const DATA_DIR = process.env.DATA_DIR || '/minecraft-data';
 const SERVER_PROPERTIES = path.join(DATA_DIR, 'server.properties');
 const WHITELIST_FILE = path.join(DATA_DIR, 'whitelist.json');

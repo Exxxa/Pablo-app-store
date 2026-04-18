@@ -4,12 +4,12 @@ services:
 
   app_proxy:
     environment:
-      APP_HOST: Minecraft-server-app_ui_1
+      APP_HOST: sparkles-minecraft-server_ui_1
       APP_PORT: 25566
 
   minecraft:
     image: itzg/minecraft-server:latest
-    container_name: Minecraft-server-app_minecraft_1
+    container_name: sparkles-minecraft-server_minecraft_1
     restart: unless-stopped
     environment:
       EULA: "TRUE"
@@ -21,10 +21,10 @@ services:
 
   ui:
     build: ./ui
-    container_name: Minecraft-server-app_ui_1
+    container_name: sparkles-minecraft-server_ui_1
     restart: unless-stopped
     environment:
-      MINECRAFT_CONTAINER: Minecraft-server-app_minecraft_1
+      MINECRAFT_CONTAINER: sparkles-minecraft-server_minecraft_1
       DATA_DIR: /minecraft-data
       PORT: 25566
     volumes:

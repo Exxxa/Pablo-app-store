@@ -1,8 +1,8 @@
 manifestVersion: 1
-id: Minecraft-server-app
+id: sparkles-minecraft-server
 name: Minecraft Java Server
 tagline: Host your own Minecraft Java Edition server with a web control panel
-icon: https://raw.githubusercontent.com/Exxxa/Pablo-app-store/master/Minecraft-server-app/icon.jpg
+icon: https://raw.githubusercontent.com/Exxxa/Pablo-app-store/master/sparkles-minecraft-server/icon.jpg
 category: Gaming
 version: "1.0.0"
 port: 25566
@@ -28,9 +28,9 @@ submission: ""
 repo: https://github.com/itzg/docker-minecraft-server
 support: https://github.com/itzg/docker-minecraft-server/issues
 gallery:
-  - https://raw.githubusercontent.com/Exxxa/Pablo-app-store/master/Minecraft-server-app/Minecraft_background_1.jpg
-  - https://raw.githubusercontent.com/Exxxa/Pablo-app-store/master/Minecraft-server-app/Minecraft_background_2.jpg
-  - https://raw.githubusercontent.com/Exxxa/Pablo-app-store/master/Minecraft-server-app/Minecraft_background_3.jpg
+  - https://raw.githubusercontent.com/Exxxa/Pablo-app-store/master/sparkles-minecraft-server/Minecraft_background_1.jpg
+  - https://raw.githubusercontent.com/Exxxa/Pablo-app-store/master/sparkles-minecraft-server/Minecraft_background_2.jpg
+  - https://raw.githubusercontent.com/Exxxa/Pablo-app-store/master/sparkles-minecraft-server/Minecraft_background_3.jpg
 releaseNotes: >-
   Initial release with full server control panel, settings editor, whitelist
   manager, and live console log streaming.
