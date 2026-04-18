@@ -246,6 +246,29 @@
       color: var(--accent); border: 1px solid var(--accent);
     }
 
+    /* ── Upload dropzone ── */
+    .upload-drop {
+      border: 2px dashed var(--border2); border-radius: var(--radius);
+      padding: 28px 20px; text-align: center; cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+    }
+    .upload-drop:hover, .upload-drop.drag-over {
+      border-color: var(--accent); background: var(--accent-dim);
+    }
+    .upload-icon { font-size: 32px; }
+    .upload-label { font-size: 14px; color: var(--text2); }
+    .upload-label u { color: var(--accent); }
+    .upload-label code { font-family: var(--mono); color: var(--blue); }
+
+    .progress-bar-wrap {
+      height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%; background: var(--accent); border-radius: 3px;
+      width: 0%; transition: width 0.3s;
+    }
+
     /* ── Whitelist ── */
     .whitelist-add { display: flex; gap: 8px; margin-bottom: 18px; }
     .whitelist-add input {
@@ -469,11 +492,33 @@
 
   <!-- ═══ WORLDS ═══ -->
   <div class="tab-panel" id="tab-worlds">
+
+    <div class="card">
+      <div class="card-title">Upload World</div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:14px">
+        Import a world from a <code style="font-family:var(--mono);color:var(--blue)">.zip</code> file.
+        The zip can contain the world folder directly or have <code style="font-family:var(--mono);color:var(--blue)">level.dat</code> at its root.
+        The server does not need to be stopped first.
+      </p>
+      <div id="upload-drop" class="upload-drop" onclick="document.getElementById('world-file-input').click()"
+           ondragover="event.preventDefault();this.classList.add('drag-over')"
+           ondragleave="this.classList.remove('drag-over')"
+           ondrop="onWorldDrop(event)">
+        <span class="upload-icon">📦</span>
+        <span class="upload-label">Drop a world <code>.zip</code> here or <u>click to browse</u></span>
+        <input type="file" id="world-file-input" accept=".zip" style="display:none" onchange="onWorldFileSelected()" />
+      </div>
+      <div id="upload-progress" style="display:none;margin-top:12px">
+        <div class="progress-bar-wrap"><div class="progress-bar" id="progress-bar"></div></div>
+        <div style="font-size:12px;color:var(--text2);margin-top:6px" id="upload-status">Uploading…</div>
+      </div>
+    </div>
+
     <div class="card">
       <div class="card-title">World Saves</div>
       <div class="banner banner-info">
         <span class="banner-icon">ℹ</span>
-        Switching the active world recreates the container with the new world name. The server will restart. Old worlds are never deleted.
+        Switching the active world recreates the container. The server restarts for ~15 s. Old worlds are never deleted.
       </div>
       <ul class="world-list" id="world-list">
         <li class="empty-state"><span class="empty-icon">🌍</span>Loading worlds…</li>
@@ -829,7 +874,16 @@
             <span class="world-name">${escHtml(w)}</span>
             ${w === active ? '<span class="active-chip">Active</span>' : ''}
           </div>
-          ${w !== active ? `<button class="btn btn-outline" onclick="setActiveWorld('${escHtml(w)}')">Set Active</button>` : ''}
+          <div class="btn-row">
+            <button class="btn btn-outline" style="padding:5px 12px;font-size:12px"
+              onclick="exportWorld('${escHtml(w)}')">⬇ Export</button>
+            <button class="btn btn-outline" style="padding:5px 12px;font-size:12px"
+              onclick="renameWorld('${escHtml(w)}')">✏ Rename</button>
+            ${w !== active
+              ? `<button class="btn btn-green" style="padding:5px 12px;font-size:12px"
+                  onclick="setActiveWorld('${escHtml(w)}')">▶ Set Active</button>`
+              : ''}
+          </div>
         </li>
       `).join('');
     } catch (err) {
@@ -838,7 +892,7 @@
   }
 
   async function setActiveWorld(name) {
-    if (!confirm(`Switch to world "${name}"? The server will restart.`)) return;
+    if (!confirm(`Switch to world "${name}"? The server will restart (~15 s).`)) return;
     try {
       const r = await fetch('/api/mc-config', {
         method: 'POST',
@@ -846,11 +900,105 @@
         body: JSON.stringify({ LEVEL: name }),
       });
       const d = await r.json();
-      if (d.success) { showToast(`World set to "${name}" — server restarted`); loadWorlds(); setTimeout(pollStatus, 2000); }
+      if (d.success) { showToast(`Switched to "${name}" — server restarting`); loadWorlds(); setTimeout(pollStatus, 2000); }
       else showToast(d.error || 'Failed', 'error');
     } catch (err) {
       showToast('Request failed: ' + err.message, 'error');
     }
+  }
+
+  function exportWorld(name) {
+    showToast(`Preparing "${name}.zip" — download will start shortly`, 'info');
+    window.location.href = `/api/worlds/${encodeURIComponent(name)}/export`;
+  }
+
+  async function renameWorld(oldName) {
+    const newName = prompt(`Rename world "${oldName}" to:`, oldName);
+    if (!newName || newName === oldName) return;
+    try {
+      const r = await fetch('/api/worlds/rename', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ oldName, newName }),
+      });
+      const d = await r.json();
+      if (d.success) {
+        showToast(d.wasActive
+          ? `Renamed to "${newName}" — apply config to restart with new name`
+          : `Renamed to "${newName}"`);
+        loadWorlds();
+      } else {
+        showToast(d.error || 'Rename failed', 'error');
+      }
+    } catch (err) {
+      showToast('Request failed: ' + err.message, 'error');
+    }
+  }
+
+  // ── World upload ───────────────────────────────────────────────────────────
+  function onWorldDrop(e) {
+    e.preventDefault();
+    document.getElementById('upload-drop').classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) uploadWorldFile(file);
+  }
+
+  function onWorldFileSelected() {
+    const file = document.getElementById('world-file-input').files[0];
+    if (file) uploadWorldFile(file);
+  }
+
+  function uploadWorldFile(file) {
+    if (!file.name.toLowerCase().endsWith('.zip')) {
+      showToast('Only .zip files are accepted', 'error');
+      return;
+    }
+    const prog = document.getElementById('upload-progress');
+    const bar = document.getElementById('progress-bar');
+    const status = document.getElementById('upload-status');
+    prog.style.display = 'block';
+    bar.style.width = '0%';
+    status.textContent = `Uploading ${file.name}…`;
+
+    const form = new FormData();
+    form.append('world', file);
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/worlds/upload');
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        const pct = Math.round(e.loaded / e.total * 80);
+        bar.style.width = pct + '%';
+        status.textContent = `Uploading… ${pct}%`;
+      }
+    };
+
+    xhr.onload = () => {
+      bar.style.width = '100%';
+      try {
+        const d = JSON.parse(xhr.responseText);
+        if (d.success) {
+          status.textContent = `✓ Imported as "${d.worldName}"`;
+          showToast(`World "${d.worldName}" imported`);
+          loadWorlds();
+          document.getElementById('world-file-input').value = '';
+          setTimeout(() => { prog.style.display = 'none'; }, 3000);
+        } else {
+          status.textContent = `Error: ${d.error}`;
+          showToast(d.error || 'Upload failed', 'error');
+        }
+      } catch {
+        status.textContent = 'Server error';
+        showToast('Upload failed', 'error');
+      }
+    };
+
+    xhr.onerror = () => {
+      status.textContent = 'Upload failed — network error';
+      showToast('Upload failed', 'error');
+    };
+
+    xhr.send(form);
   }
 
   // ── Properties ─────────────────────────────────────────────────────────────

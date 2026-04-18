@@ -4,6 +4,9 @@ const WebSocket = require('ws');
 const Docker = require('dockerode');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
+const multer = require('multer');
+const AdmZip = require('adm-zip');
 
 const app = express();
 const server = http.createServer(app);
@@ -27,6 +30,16 @@ const DEFAULT_MC_SETTINGS = {
 };
 
 const BASE_ENV = { EULA: 'TRUE' };
+
+const upload = multer({
+  dest: path.join(os.tmpdir(), 'mc-uploads'),
+  limits: { fileSize: 4 * 1024 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    file.originalname.toLowerCase().endsWith('.zip')
+      ? cb(null, true)
+      : cb(new Error('Only .zip files are accepted'));
+  },
+});
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -251,6 +264,100 @@ app.get('/api/worlds', (_req, res) => {
       .map(e => e.name);
     const active = readMcSettings().LEVEL || 'world';
     res.json({ worlds, active });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Upload a world zip
+app.post('/api/worlds/upload', upload.single('world'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+  const tmpPath = req.file.path;
+  try {
+    const zip = new AdmZip(tmpPath);
+    const entries = zip.getEntries();
+
+    const levelEntry = entries.find(e => !e.isDirectory && e.entryName.replace(/\\/g, '/').endsWith('level.dat'));
+    if (!levelEntry) {
+      fs.unlinkSync(tmpPath);
+      return res.status(400).json({ error: 'Not a valid Minecraft world — no level.dat found in zip' });
+    }
+
+    const parts = levelEntry.entryName.replace(/\\/g, '/').split('/');
+    const hasSubfolder = parts.length > 1;
+    const extractRoot = hasSubfolder ? parts[0] + '/' : '';
+    const baseName = hasSubfolder
+      ? parts[0]
+      : req.file.originalname.replace(/\.zip$/i, '').replace(/[^a-zA-Z0-9_-]/g, '_') || 'world';
+
+    let finalName = baseName;
+    if (fs.existsSync(path.join(DATA_DIR, finalName))) {
+      finalName = baseName + '_' + Date.now();
+    }
+    const finalPath = path.join(DATA_DIR, finalName);
+    fs.mkdirSync(finalPath, { recursive: true });
+
+    entries.forEach(entry => {
+      if (entry.isDirectory) return;
+      const entryName = entry.entryName.replace(/\\/g, '/');
+      const relPath = extractRoot ? entryName.slice(extractRoot.length) : entryName;
+      if (!relPath) return;
+      const dest = path.join(finalPath, relPath);
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      fs.writeFileSync(dest, entry.getData());
+    });
+
+    fs.unlinkSync(tmpPath);
+    res.json({ success: true, worldName: finalName });
+  } catch (err) {
+    try { fs.unlinkSync(tmpPath); } catch (_) {}
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Rename a world folder
+app.post('/api/worlds/rename', (req, res) => {
+  try {
+    const { oldName, newName } = req.body;
+    if (!oldName || !newName) return res.status(400).json({ error: 'Missing oldName or newName' });
+    if (!/^[a-zA-Z0-9_-]+$/.test(newName)) {
+      return res.status(400).json({ error: 'World name may only contain letters, numbers, _ and -' });
+    }
+    const oldPath = path.join(DATA_DIR, oldName);
+    const newPath = path.join(DATA_DIR, newName);
+    if (!fs.existsSync(oldPath)) return res.status(404).json({ error: 'World not found' });
+    if (fs.existsSync(newPath)) return res.status(409).json({ error: 'A world with that name already exists' });
+
+    fs.renameSync(oldPath, newPath);
+
+    const settings = readMcSettings();
+    const wasActive = settings.LEVEL === oldName;
+    if (wasActive) {
+      settings.LEVEL = newName;
+      writeMcSettings(settings);
+    }
+    res.json({ success: true, wasActive });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Export (download) a world as a zip
+app.get('/api/worlds/:name/export', (req, res) => {
+  try {
+    const { name } = req.params;
+    if (!/^[a-zA-Z0-9_-]+$/.test(name)) return res.status(400).json({ error: 'Invalid world name' });
+    const worldPath = path.join(DATA_DIR, name);
+    if (!fs.existsSync(worldPath)) return res.status(404).json({ error: 'World not found' });
+
+    const zip = new AdmZip();
+    zip.addLocalFolder(worldPath, name);
+    const buffer = zip.toBuffer();
+
+    res.setHeader('Content-Disposition', `attachment; filename="${name}.zip"`);
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Length', buffer.length);
+    res.send(buffer);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

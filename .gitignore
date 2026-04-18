@@ -1,7 +1,8 @@
 .DS_Store
 
 # Docker build source — not needed by Umbrel, image is published to Docker Hub
-sparkles-minecraft-server/ui/
+#sparkles-minecraft-server/ui/
+sparkles-minecraft-server\ui
 
 # Local build notes — tracked locally only
 DOCKER_BUILD.md
