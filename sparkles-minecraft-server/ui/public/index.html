@@ -229,6 +229,17 @@
     #modrinth-section { display: none; margin-top: 16px; }
     #modrinth-section.visible { display: block; }
 
+    /* ── Mods / Plugins section ── */
+    #mods-section { display: none; margin-top: 16px; }
+    #mods-section.visible { display: block; }
+    .mod-list { list-style: none; display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+    .mod-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 7px;
+    }
+    .mod-name { font-size: 13px; font-family: var(--mono); color: var(--text); word-break: break-all; flex: 1; margin-right: 10px; }
+
     /* ── Worlds tab ── */
     .world-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
     .world-item {
@@ -459,6 +470,27 @@
             </select>
           </div>
         </div>
+      </div>
+
+      <div id="mods-section">
+        <div class="section-title" id="mods-section-title">Mods</div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
+          Upload <code style="font-family:var(--mono);color:var(--blue)">.jar</code> files to install mods or plugins.
+          Restart the server to apply changes. Files are stored in <code style="font-family:var(--mono);color:var(--blue)" id="mods-folder-hint">mods/</code>.
+        </p>
+        <div id="mod-upload-drop" class="upload-drop"
+             onclick="document.getElementById('mod-file-input').click()"
+             ondragover="event.preventDefault();this.classList.add('drag-over')"
+             ondragleave="this.classList.remove('drag-over')"
+             ondrop="onModDrop(event)">
+          <span class="upload-icon">🧩</span>
+          <span class="upload-label">Drop <code>.jar</code> files here or <u>click to browse</u></span>
+          <input type="file" id="mod-file-input" accept=".jar" multiple style="display:none" onchange="onModFileSelected()" />
+        </div>
+        <div id="mod-upload-status" style="display:none;margin-top:10px;font-size:12px;color:var(--text2)"></div>
+        <ul class="mod-list" id="mod-list">
+          <li style="padding:16px;text-align:center;color:var(--muted);font-size:13px">No mods installed yet</li>
+        </ul>
       </div>
 
       <div class="section-title">Memory & Performance</div>
@@ -810,10 +842,26 @@
     }
   }
 
+  const MOD_SUPPORTED_TYPES = ['FABRIC', 'FORGE', 'PAPER', 'PURPUR'];
+
   function onTypeChange() {
     const type = document.getElementById('cfg-type').value;
-    const sec = document.getElementById('modrinth-section');
-    type === 'MODRINTH' ? sec.classList.add('visible') : sec.classList.remove('visible');
+    const modrinthSec = document.getElementById('modrinth-section');
+    const modsSec = document.getElementById('mods-section');
+    const modsTitle = document.getElementById('mods-section-title');
+    const modsFolderHint = document.getElementById('mods-folder-hint');
+
+    type === 'MODRINTH' ? modrinthSec.classList.add('visible') : modrinthSec.classList.remove('visible');
+
+    if (MOD_SUPPORTED_TYPES.includes(type)) {
+      modsSec.classList.add('visible');
+      const isPlugin = type === 'PAPER' || type === 'PURPUR';
+      modsTitle.textContent = isPlugin ? 'Plugins' : 'Mods';
+      modsFolderHint.textContent = isPlugin ? 'plugins/' : 'mods/';
+      loadMods();
+    } else {
+      modsSec.classList.remove('visible');
+    }
   }
 
   function setMemory(val) {
@@ -854,6 +902,79 @@
     } finally {
       btn.disabled = false;
       btn.textContent = 'Apply & Recreate Container';
+    }
+  }
+
+  // ── Mods / Plugins ─────────────────────────────────────────────────────────
+  async function loadMods() {
+    try {
+      const r = await fetch('/api/mods');
+      const { mods, folder } = await r.json();
+      const list = document.getElementById('mod-list');
+      if (!mods.length) {
+        list.innerHTML = `<li style="padding:16px;text-align:center;color:var(--muted);font-size:13px">No ${folder} installed yet</li>`;
+        return;
+      }
+      list.innerHTML = mods.map(m => `
+        <li class="mod-item">
+          <span class="mod-name">🧩 ${escHtml(m)}</span>
+          <button class="btn btn-outline" style="padding:4px 10px;font-size:12px;color:var(--red);border-color:var(--red-dim)"
+            onclick="deleteMod('${escHtml(m).replace(/'/g, "\\'")}')">Remove</button>
+        </li>
+      `).join('');
+    } catch (err) {
+      showToast('Failed to load mods', 'error');
+    }
+  }
+
+  function onModDrop(e) {
+    e.preventDefault();
+    document.getElementById('mod-upload-drop').classList.remove('drag-over');
+    const files = Array.from(e.dataTransfer.files).filter(f => f.name.toLowerCase().endsWith('.jar'));
+    if (files.length) uploadMods(files);
+    else showToast('Only .jar files are accepted', 'error');
+  }
+
+  function onModFileSelected() {
+    const files = Array.from(document.getElementById('mod-file-input').files);
+    if (files.length) uploadMods(files);
+  }
+
+  async function uploadMods(files) {
+    const statusEl = document.getElementById('mod-upload-status');
+    statusEl.style.display = 'block';
+    let failed = 0;
+    for (const file of files) {
+      statusEl.textContent = `Uploading ${file.name}…`;
+      const form = new FormData();
+      form.append('mod', file);
+      try {
+        const r = await fetch('/api/mods/upload', { method: 'POST', body: form });
+        const d = await r.json();
+        if (!d.success) { showToast(`Failed: ${d.error}`, 'error'); failed++; }
+      } catch (err) {
+        showToast(`Upload failed: ${err.message}`, 'error'); failed++;
+      }
+    }
+    const ok = files.length - failed;
+    statusEl.textContent = ok > 0
+      ? `✓ ${ok} file${ok > 1 ? 's' : ''} uploaded${failed ? `, ${failed} failed` : ''}`
+      : 'Upload failed';
+    if (ok > 0) showToast(`${ok} mod${ok > 1 ? 's' : ''} uploaded — restart server to apply`);
+    document.getElementById('mod-file-input').value = '';
+    setTimeout(() => { statusEl.style.display = 'none'; }, 4000);
+    loadMods();
+  }
+
+  async function deleteMod(filename) {
+    if (!confirm(`Remove "${filename}"?`)) return;
+    try {
+      const r = await fetch('/api/mods/' + encodeURIComponent(filename), { method: 'DELETE' });
+      const d = await r.json();
+      if (d.success) { showToast(`Removed ${filename}`); loadMods(); }
+      else showToast(d.error || 'Delete failed', 'error');
+    } catch (err) {
+      showToast('Request failed: ' + err.message, 'error');
     }
   }
 

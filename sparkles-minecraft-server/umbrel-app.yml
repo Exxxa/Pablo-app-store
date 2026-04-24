@@ -4,7 +4,7 @@ name: Minecraft Java Server
 tagline: Host your own Minecraft Java Edition server with a web control panel
 icon: https://raw.githubusercontent.com/Exxxa/Pablo-app-store/master/sparkles-minecraft-server/icon.jpg
 category: Gaming
-version: "1.2.0"
+version: "1.3.0"
 port: 25566
 description: >-
   A full-featured Minecraft Java Edition server powered by itzg/minecraft-server,

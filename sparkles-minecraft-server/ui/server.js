@@ -41,6 +41,21 @@ const upload = multer({
   },
 });
 
+const modUpload = multer({
+  dest: path.join(os.tmpdir(), 'mc-uploads'),
+  limits: { fileSize: 500 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    file.originalname.toLowerCase().endsWith('.jar')
+      ? cb(null, true)
+      : cb(new Error('Only .jar files are accepted'));
+  },
+});
+
+function getModDir(type) {
+  if (type === 'PAPER' || type === 'PURPUR') return path.join(DATA_DIR, 'plugins');
+  return path.join(DATA_DIR, 'mods');
+}
+
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -358,6 +373,55 @@ app.get('/api/worlds/:name/export', (req, res) => {
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Length', buffer.length);
     res.send(buffer);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Mods / Plugins ─────────────────────────────────────────────────────────
+app.get('/api/mods', (_req, res) => {
+  try {
+    const settings = readMcSettings();
+    const dir = getModDir(settings.TYPE);
+    const folder = path.basename(dir);
+    if (!fs.existsSync(dir)) return res.json({ mods: [], folder });
+    const files = fs.readdirSync(dir).filter(f => f.toLowerCase().endsWith('.jar'));
+    res.json({ mods: files.sort(), folder });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/mods/upload', modUpload.single('mod'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+  const tmpPath = req.file.path;
+  try {
+    const settings = readMcSettings();
+    const dir = getModDir(settings.TYPE);
+    fs.mkdirSync(dir, { recursive: true });
+    const filename = req.file.originalname.replace(/[^a-zA-Z0-9._\-() ]/g, '_');
+    const dest = path.join(dir, filename);
+    fs.copyFileSync(tmpPath, dest);
+    fs.unlinkSync(tmpPath);
+    res.json({ success: true, filename });
+  } catch (err) {
+    try { fs.unlinkSync(tmpPath); } catch (_) {}
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/mods/:filename', (req, res) => {
+  try {
+    const { filename } = req.params;
+    if (!filename.toLowerCase().endsWith('.jar') || filename.includes('/') || filename.includes('..')) {
+      return res.status(400).json({ error: 'Invalid filename' });
+    }
+    const settings = readMcSettings();
+    const dir = getModDir(settings.TYPE);
+    const filePath = path.join(dir, filename);
+    if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'File not found' });
+    fs.unlinkSync(filePath);
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
