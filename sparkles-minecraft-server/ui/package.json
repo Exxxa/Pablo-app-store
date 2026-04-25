@@ -1,6 +1,6 @@
 {
   "name": "minecraft-ui",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Minecraft server management UI for Umbrel",
   "main": "server.js",
   "scripts": {
