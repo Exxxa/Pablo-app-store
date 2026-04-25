@@ -41,6 +41,15 @@ const GAMERULE_DEFAULTS = { keepInventory: false };
 
 const BASE_ENV = { EULA: 'TRUE' };
 
+function safeJoin(base, rel) {
+  const resolvedBase = path.resolve(base);
+  const resolved = path.resolve(base, rel);
+  if (resolved !== resolvedBase && !resolved.startsWith(resolvedBase + path.sep)) {
+    throw new Error('Path traversal detected');
+  }
+  return resolved;
+}
+
 const upload = multer({
   dest: path.join(os.tmpdir(), 'mc-uploads'),
   limits: { fileSize: 4 * 1024 * 1024 * 1024 },
@@ -407,7 +416,7 @@ app.post('/api/worlds/upload', upload.single('world'), (req, res) => {
       const entryName = entry.entryName.replace(/\\/g, '/');
       const relPath = extractRoot ? entryName.slice(extractRoot.length) : entryName;
       if (!relPath) return;
-      const dest = path.join(finalPath, relPath);
+      const dest = safeJoin(finalPath, relPath);
       fs.mkdirSync(path.dirname(dest), { recursive: true });
       fs.writeFileSync(dest, entry.getData());
     });
@@ -425,7 +434,7 @@ app.post('/api/worlds/rename', (req, res) => {
   try {
     const { oldName, newName } = req.body;
     if (!oldName || !newName) return res.status(400).json({ error: 'Missing oldName or newName' });
-    if (!/^[a-zA-Z0-9_-]+$/.test(newName)) {
+    if (!/^[a-zA-Z0-9_-]+$/.test(oldName) || !/^[a-zA-Z0-9_-]+$/.test(newName)) {
       return res.status(400).json({ error: 'World name may only contain letters, numbers, _ and -' });
     }
     const oldPath = path.join(DATA_DIR, oldName);
@@ -720,7 +729,8 @@ app.post('/api/bans/add', async (req, res) => {
       });
       fs.writeFileSync(BANS_FILE, JSON.stringify(bans, null, 2));
     }
-    try { await sendRconCommand(`ban ${name}${reason ? ' ' + reason : ''}`); } catch (_) {}
+    const safeReason = reason ? reason.replace(/[\r\n\0]/g, ' ') : '';
+    try { await sendRconCommand(`ban ${name}${safeReason ? ' ' + safeReason : ''}`); } catch (_) {}
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -780,6 +790,9 @@ app.post('/api/backups/:filename/restore', (req, res) => {
     const entries = zip.getEntries();
     const topDir = entries.length ? entries[0].entryName.split('/')[0] : null;
     if (!topDir) return res.status(400).json({ error: 'Empty backup' });
+    for (const entry of entries) {
+      safeJoin(DATA_DIR, entry.entryName.replace(/\\/g, '/'));
+    }
     const destPath = path.join(DATA_DIR, topDir);
     if (fs.existsSync(destPath)) fs.rmSync(destPath, { recursive: true, force: true });
     zip.extractAllTo(DATA_DIR, true);
