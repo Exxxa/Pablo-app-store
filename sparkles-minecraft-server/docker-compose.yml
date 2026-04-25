@@ -16,6 +16,8 @@ services:
       TYPE: VANILLA
       VERSION: LATEST
       MEMORY: 1G
+      ENABLE_RCON: "true"
+      RCON_PASSWORD: "sparkles_mc_rcon"
     ports:
       - "25565:25565"
     volumes:
@@ -29,6 +31,7 @@ services:
       MINECRAFT_CONTAINER: sparkles-minecraft-server_minecraft_1
       DATA_DIR: /minecraft-data
       PORT: 25566
+      RCON_PASSWORD: "sparkles_mc_rcon"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ${APP_DATA_DIR}/minecraft:/minecraft-data

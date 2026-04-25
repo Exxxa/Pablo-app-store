@@ -1,5 +1,6 @@
 const express = require('express');
 const http = require('http');
+const https = require('https');
 const WebSocket = require('ws');
 const Docker = require('dockerode');
 const fs = require('fs');
@@ -18,6 +19,11 @@ const DATA_DIR = process.env.DATA_DIR || '/minecraft-data';
 const SERVER_PROPERTIES = path.join(DATA_DIR, 'server.properties');
 const WHITELIST_FILE = path.join(DATA_DIR, 'whitelist.json');
 const MC_SETTINGS_FILE = path.join(DATA_DIR, 'mc-settings.json');
+const GAMERULES_FILE = path.join(DATA_DIR, 'mc-gamerules.json');
+const BANS_FILE = path.join(DATA_DIR, 'banned-players.json');
+const SCHEDULE_FILE = path.join(DATA_DIR, 'mc-schedule.json');
+const BACKUPS_DIR = path.join(DATA_DIR, 'backups');
+const RCON_PASSWORD = process.env.RCON_PASSWORD || 'sparkles_mc_rcon';
 
 const DEFAULT_MC_SETTINGS = {
   TYPE: 'VANILLA',
@@ -27,7 +33,11 @@ const DEFAULT_MC_SETTINGS = {
   USE_AIKAR_FLAGS: 'false',
   MODRINTH_MODPACK: '',
   MODRINTH_LOADER: '',
+  ENABLE_RCON: 'true',
+  RCON_PASSWORD: RCON_PASSWORD,
 };
+
+const GAMERULE_DEFAULTS = { keepInventory: false };
 
 const BASE_ENV = { EULA: 'TRUE' };
 
@@ -64,6 +74,66 @@ async function getContainer() {
   const info = containers.find(c => c.Names.some(n => n.replace(/^\//, '') === CONTAINER_NAME));
   if (!info) throw new Error(`Container "${CONTAINER_NAME}" not found`);
   return docker.getContainer(info.Id);
+}
+
+function getMojangProfile(playerName) {
+  return new Promise((resolve) => {
+    const req = https.get(`https://api.mojang.com/users/profiles/minecraft/${encodeURIComponent(playerName)}`, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        if (res.statusCode === 200) {
+          try {
+            const json = JSON.parse(data);
+            const raw = json.id;
+            const uuid = `${raw.slice(0,8)}-${raw.slice(8,12)}-${raw.slice(12,16)}-${raw.slice(16,20)}-${raw.slice(20)}`;
+            resolve({ uuid, name: json.name });
+          } catch { resolve(null); }
+        } else { resolve(null); }
+      });
+    });
+    req.on('error', () => resolve(null));
+    req.setTimeout(5000, () => { req.destroy(); resolve(null); });
+  });
+}
+
+async function sendRconCommand(command) {
+  const container = await getContainer();
+  const exec = await container.exec({
+    Cmd: ['rcon-cli', '--host', 'localhost', '--port', '25575', '--password', RCON_PASSWORD, command],
+    AttachStdout: true,
+    AttachStderr: true,
+  });
+  const stream = await exec.start({ hijack: true, stdin: false });
+  return new Promise((resolve) => {
+    let output = '';
+    stream.on('data', chunk => output += chunk.toString());
+    stream.on('end', () => resolve(output.trim()));
+    stream.on('error', () => resolve(''));
+  });
+}
+
+function readGamerules() {
+  if (!fs.existsSync(GAMERULES_FILE)) return { ...GAMERULE_DEFAULTS };
+  try { return { ...GAMERULE_DEFAULTS, ...JSON.parse(fs.readFileSync(GAMERULES_FILE, 'utf8')) }; }
+  catch { return { ...GAMERULE_DEFAULTS }; }
+}
+
+function getDirSizeBytes(dirPath) {
+  let size = 0;
+  try {
+    for (const item of fs.readdirSync(dirPath, { withFileTypes: true })) {
+      const full = path.join(dirPath, item.name);
+      size += item.isDirectory() ? getDirSizeBytes(full) : fs.statSync(full).size;
+    }
+  } catch { }
+  return size;
+}
+
+function getSchedule() {
+  if (!fs.existsSync(SCHEDULE_FILE)) return { enabled: false, hour: 4, minute: 0 };
+  try { return JSON.parse(fs.readFileSync(SCHEDULE_FILE, 'utf8')); }
+  catch { return { enabled: false, hour: 4, minute: 0 }; }
 }
 
 function readMcSettings() {
@@ -197,6 +267,7 @@ app.get('/api/status', async (_req, res) => {
       running: info.State.Running,
       startedAt: info.State.StartedAt,
       image: info.Config.Image,
+      restartCount: info.RestartCount || 0,
     });
   } catch (err) {
     res.json({ status: 'not_found', running: false, error: err.message });
@@ -276,12 +347,31 @@ app.get('/api/worlds', (_req, res) => {
     const entries = fs.readdirSync(DATA_DIR, { withFileTypes: true });
     const worlds = entries
       .filter(e => e.isDirectory() && fs.existsSync(path.join(DATA_DIR, e.name, 'level.dat')))
-      .map(e => e.name);
+      .map(e => {
+        const bytes = getDirSizeBytes(path.join(DATA_DIR, e.name));
+        const sizeMB = bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} KB`
+          : bytes < 1024 * 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB`
+          : `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
+        return { name: e.name, sizeMB };
+      });
     const active = readMcSettings().LEVEL || 'world';
     res.json({ worlds, active });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+app.delete('/api/worlds/:name', (req, res) => {
+  try {
+    const { name } = req.params;
+    if (!/^[a-zA-Z0-9_-]+$/.test(name)) return res.status(400).json({ error: 'Invalid world name' });
+    const active = readMcSettings().LEVEL || 'world';
+    if (name === active) return res.status(400).json({ error: 'Cannot delete the active world' });
+    const worldPath = path.join(DATA_DIR, name);
+    if (!fs.existsSync(worldPath)) return res.status(404).json({ error: 'World not found' });
+    fs.rmSync(worldPath, { recursive: true, force: true });
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // Upload a world zip
@@ -462,7 +552,7 @@ app.get('/api/whitelist', (_req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/whitelist/add', (req, res) => {
+app.post('/api/whitelist/add', async (req, res) => {
   try {
     const { name } = req.body;
     if (!name || typeof name !== 'string' || !/^[A-Za-z0-9_]{1,16}$/.test(name)) {
@@ -470,8 +560,9 @@ app.post('/api/whitelist/add', (req, res) => {
     }
     let whitelist = [];
     if (fs.existsSync(WHITELIST_FILE)) whitelist = JSON.parse(fs.readFileSync(WHITELIST_FILE, 'utf8'));
-    if (!whitelist.find(p => p.name === name)) {
-      whitelist.push({ uuid: '', name });
+    if (!whitelist.find(p => p.name.toLowerCase() === name.toLowerCase())) {
+      const profile = await getMojangProfile(name);
+      whitelist.push({ uuid: profile ? profile.uuid : '', name: profile ? profile.name : name });
       fs.writeFileSync(WHITELIST_FILE, JSON.stringify(whitelist, null, 2));
     }
     res.json({ success: true });
@@ -488,6 +579,284 @@ app.delete('/api/whitelist/:name', (req, res) => {
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+
+// ── Game Rules ────────────────────────────────────────────────────────────
+app.get('/api/gamerules', (_req, res) => {
+  res.json(readGamerules());
+});
+
+app.post('/api/gamerules', async (req, res) => {
+  try {
+    const allowed = ['keepInventory'];
+    const current = readGamerules();
+    const updates = {};
+    allowed.forEach(k => {
+      if (Object.prototype.hasOwnProperty.call(req.body, k)) {
+        updates[k] = Boolean(req.body[k]);
+      }
+    });
+    const newRules = { ...current, ...updates };
+    fs.writeFileSync(GAMERULES_FILE, JSON.stringify(newRules, null, 2));
+
+    let rconOk = false;
+    try {
+      for (const [rule, value] of Object.entries(updates)) {
+        await sendRconCommand(`gamerule ${rule} ${value}`);
+      }
+      rconOk = true;
+    } catch (_) {}
+
+    res.json({ success: true, rconOk });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── RCON command ──────────────────────────────────────────────────────────
+app.post('/api/rcon', async (req, res) => {
+  try {
+    const { command } = req.body;
+    if (!command || typeof command !== 'string' || command.trim().length === 0) {
+      return res.status(400).json({ error: 'command is required' });
+    }
+    const output = await sendRconCommand(command.trim());
+    res.json({ success: true, output });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── Live player list ───────────────────────────────────────────────────────
+app.get('/api/players', async (_req, res) => {
+  try {
+    const raw = await sendRconCommand('list');
+    // "There are 2 of a max of 20 players online: Player1, Player2"
+    const match = raw.match(/There are (\d+) of a max of (\d+) players online:?(.*)/i);
+    if (match) {
+      const players = match[3].split(',').map(s => s.trim()).filter(Boolean);
+      res.json({ online: parseInt(match[1], 10), max: parseInt(match[2], 10), players });
+    } else {
+      res.json({ online: 0, max: 0, players: [] });
+    }
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── Ops management ────────────────────────────────────────────────────────
+const OPS_FILE = path.join(DATA_DIR, 'ops.json');
+
+app.get('/api/ops', (_req, res) => {
+  try {
+    if (!fs.existsSync(OPS_FILE)) return res.json([]);
+    res.json(JSON.parse(fs.readFileSync(OPS_FILE, 'utf8')));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/ops/add', async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name || typeof name !== 'string' || !/^[A-Za-z0-9_]{1,16}$/.test(name)) {
+      return res.status(400).json({ error: 'Invalid player name' });
+    }
+    let ops = [];
+    if (fs.existsSync(OPS_FILE)) ops = JSON.parse(fs.readFileSync(OPS_FILE, 'utf8'));
+    if (!ops.find(p => p.name.toLowerCase() === name.toLowerCase())) {
+      const profile = await getMojangProfile(name);
+      ops.push({ uuid: profile ? profile.uuid : '', name: profile ? profile.name : name, level: 4, bypassesPlayerLimit: false });
+      fs.writeFileSync(OPS_FILE, JSON.stringify(ops, null, 2));
+    }
+    try { await sendRconCommand(`op ${name}`); } catch (_) {}
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/ops/:name', async (req, res) => {
+  try {
+    const { name } = req.params;
+    let ops = [];
+    if (fs.existsSync(OPS_FILE)) ops = JSON.parse(fs.readFileSync(OPS_FILE, 'utf8'));
+    ops = ops.filter(p => p.name !== name);
+    fs.writeFileSync(OPS_FILE, JSON.stringify(ops, null, 2));
+    try { await sendRconCommand(`deop ${name}`); } catch (_) {}
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── Container stats (CPU / RAM) ────────────────────────────────────────────
+app.get('/api/stats', async (_req, res) => {
+  try {
+    const container = await getContainer();
+    const stats = await container.stats({ stream: false });
+    const cpuDelta = stats.cpu_stats.cpu_usage.total_usage - stats.precpu_stats.cpu_usage.total_usage;
+    const systemDelta = stats.cpu_stats.system_cpu_usage - stats.precpu_stats.system_cpu_usage;
+    const cpuCount = stats.cpu_stats.online_cpus || stats.cpu_stats.cpu_usage.percpu_usage?.length || 1;
+    const cpuPercent = systemDelta > 0 ? parseFloat(((cpuDelta / systemDelta) * cpuCount * 100).toFixed(1)) : 0;
+    const memUsedMB = Math.round(stats.memory_stats.usage / 1024 / 1024);
+    const memLimitMB = Math.round(stats.memory_stats.limit / 1024 / 1024);
+    res.json({ cpuPercent, memUsedMB, memLimitMB });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── Bans ──────────────────────────────────────────────────────────────────
+app.get('/api/bans', (_req, res) => {
+  try {
+    if (!fs.existsSync(BANS_FILE)) return res.json([]);
+    res.json(JSON.parse(fs.readFileSync(BANS_FILE, 'utf8')));
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/bans/add', async (req, res) => {
+  try {
+    const { name, reason } = req.body;
+    if (!name || typeof name !== 'string' || !/^[A-Za-z0-9_]{1,16}$/.test(name)) {
+      return res.status(400).json({ error: 'Invalid player name' });
+    }
+    let bans = [];
+    if (fs.existsSync(BANS_FILE)) bans = JSON.parse(fs.readFileSync(BANS_FILE, 'utf8'));
+    if (!bans.find(p => p.name.toLowerCase() === name.toLowerCase())) {
+      const profile = await getMojangProfile(name);
+      bans.push({
+        uuid: profile ? profile.uuid : '',
+        name: profile ? profile.name : name,
+        source: 'Minecraft UI',
+        expires: 'forever',
+        reason: reason || 'Banned by an operator.',
+        created: new Date().toISOString(),
+      });
+      fs.writeFileSync(BANS_FILE, JSON.stringify(bans, null, 2));
+    }
+    try { await sendRconCommand(`ban ${name}${reason ? ' ' + reason : ''}`); } catch (_) {}
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/bans/:name', async (req, res) => {
+  try {
+    const { name } = req.params;
+    let bans = [];
+    if (fs.existsSync(BANS_FILE)) bans = JSON.parse(fs.readFileSync(BANS_FILE, 'utf8'));
+    bans = bans.filter(p => p.name !== name);
+    fs.writeFileSync(BANS_FILE, JSON.stringify(bans, null, 2));
+    try { await sendRconCommand(`pardon ${name}`); } catch (_) {}
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── World backups ─────────────────────────────────────────────────────────
+app.get('/api/backups', (_req, res) => {
+  try {
+    if (!fs.existsSync(BACKUPS_DIR)) return res.json([]);
+    const files = fs.readdirSync(BACKUPS_DIR)
+      .filter(f => f.endsWith('.zip'))
+      .map(f => {
+        const stat = fs.statSync(path.join(BACKUPS_DIR, f));
+        return { name: f, sizeMB: (stat.size / 1024 / 1024).toFixed(1), created: stat.birthtime };
+      })
+      .sort((a, b) => new Date(b.created) - new Date(a.created));
+    res.json(files);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/worlds/:name/backup', (req, res) => {
+  try {
+    const { name } = req.params;
+    if (!/^[a-zA-Z0-9_-]+$/.test(name)) return res.status(400).json({ error: 'Invalid world name' });
+    const worldPath = path.join(DATA_DIR, name);
+    if (!fs.existsSync(worldPath)) return res.status(404).json({ error: 'World not found' });
+    if (!fs.existsSync(BACKUPS_DIR)) fs.mkdirSync(BACKUPS_DIR, { recursive: true });
+    const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const backupName = `${name}_${ts}.zip`;
+    const zip = new AdmZip();
+    zip.addLocalFolder(worldPath, name);
+    zip.writeZip(path.join(BACKUPS_DIR, backupName));
+    res.json({ success: true, backupName });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/backups/:filename/restore', (req, res) => {
+  try {
+    const { filename } = req.params;
+    if (!filename.endsWith('.zip') || filename.includes('/') || filename.includes('..')) {
+      return res.status(400).json({ error: 'Invalid filename' });
+    }
+    const backupPath = path.join(BACKUPS_DIR, filename);
+    if (!fs.existsSync(backupPath)) return res.status(404).json({ error: 'Backup not found' });
+    const zip = new AdmZip(backupPath);
+    const entries = zip.getEntries();
+    const topDir = entries.length ? entries[0].entryName.split('/')[0] : null;
+    if (!topDir) return res.status(400).json({ error: 'Empty backup' });
+    const destPath = path.join(DATA_DIR, topDir);
+    if (fs.existsSync(destPath)) fs.rmSync(destPath, { recursive: true, force: true });
+    zip.extractAllTo(DATA_DIR, true);
+    res.json({ success: true, worldName: topDir });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/backups/:filename', (req, res) => {
+  try {
+    const { filename } = req.params;
+    if (!filename.endsWith('.zip') || filename.includes('/') || filename.includes('..')) {
+      return res.status(400).json({ error: 'Invalid filename' });
+    }
+    const backupPath = path.join(BACKUPS_DIR, filename);
+    if (fs.existsSync(backupPath)) fs.unlinkSync(backupPath);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/backups/:filename/download', (req, res) => {
+  try {
+    const { filename } = req.params;
+    if (!filename.endsWith('.zip') || filename.includes('/') || filename.includes('..')) {
+      return res.status(400).json({ error: 'Invalid filename' });
+    }
+    const backupPath = path.join(BACKUPS_DIR, filename);
+    if (!fs.existsSync(backupPath)) return res.status(404).json({ error: 'Not found' });
+    res.download(backupPath, filename);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── Scheduled restart ─────────────────────────────────────────────────────
+let scheduledRestartInProgress = false;
+
+app.get('/api/schedule', (_req, res) => res.json(getSchedule()));
+
+app.post('/api/schedule', (req, res) => {
+  try {
+    const { enabled, hour, minute } = req.body;
+    const sched = {
+      enabled: Boolean(enabled),
+      hour: Math.max(0, Math.min(23, parseInt(hour, 10) || 4)),
+      minute: Math.max(0, Math.min(59, parseInt(minute, 10) || 0)),
+    };
+    fs.writeFileSync(SCHEDULE_FILE, JSON.stringify(sched, null, 2));
+    res.json({ success: true, schedule: sched });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+async function runScheduledRestart() {
+  if (scheduledRestartInProgress) return;
+  scheduledRestartInProgress = true;
+  try {
+    const warnings = [
+      [0,            'say [Auto-restart] Server will restart in 5 minutes.'],
+      [4 * 60000,    'say [Auto-restart] Server will restart in 1 minute.'],
+      [30000,        'say [Auto-restart] Server restarting in 30 seconds!'],
+      [30000,        null],
+    ];
+    for (const [delay, cmd] of warnings) {
+      await new Promise(r => setTimeout(r, delay));
+      if (cmd) try { await sendRconCommand(cmd); } catch (_) {}
+    }
+    const container = await getContainer();
+    await container.restart();
+  } catch (err) { console.error('Scheduled restart failed:', err.message); }
+  finally { scheduledRestartInProgress = false; }
+}
+
+setInterval(() => {
+  const sched = getSchedule();
+  if (!sched.enabled) return;
+  const now = new Date();
+  if (now.getHours() === sched.hour && now.getMinutes() === sched.minute) {
+    runScheduledRestart();
+  }
+}, 60 * 1000);
 
 // ── WebSocket: Log streaming ───────────────────────────────────────────────
 wss.on('connection', async (ws) => {

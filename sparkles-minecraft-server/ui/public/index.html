@@ -347,6 +347,96 @@
 
     /* ── Divider ── */
     .mt { margin-top: 20px; }
+
+    /* ── Sparkline ── */
+    .sparkline-wrap { margin-top: 6px; }
+    .sparkline { display: block; width: 100%; height: 32px; }
+
+    /* ── MOTD preview ── */
+    .motd-preview {
+      margin-top: 8px; padding: 10px 14px; background: #1a1a2e;
+      border: 1px solid var(--border); border-radius: 7px;
+      font-family: 'Minecraft', var(--mono), monospace; font-size: 14px;
+      min-height: 36px; word-break: break-word;
+    }
+
+    /* ── Log filter bar ── */
+    .log-filter { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; align-items: center; }
+    .filter-btn {
+      padding: 4px 10px; border-radius: 5px; border: 1px solid var(--border2);
+      background: var(--surface2); color: var(--text2); font-size: 12px;
+      font-weight: 600; cursor: pointer; transition: all 0.15s;
+    }
+    .filter-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+    .filter-btn.warn.active { border-color: var(--yellow); color: var(--yellow); background: var(--yellow-dim); }
+    .filter-btn.error.active { border-color: var(--red); color: var(--red); background: var(--red-dim); }
+    .log-search {
+      flex: 1; min-width: 160px; background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); font-size: 12px; padding: 4px 10px; border-radius: 5px;
+    }
+    .log-search:focus { outline: none; border-color: var(--accent); }
+
+    /* ── Macros ── */
+    .macro-list { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+    .macro-btn {
+      padding: 5px 12px; border-radius: 5px; border: 1px solid var(--border2);
+      background: var(--surface2); color: var(--text2); font-size: 12px;
+      font-weight: 600; cursor: pointer; transition: all 0.15s;
+    }
+    .macro-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Backup list ── */
+    .backup-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 9px 14px; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 7px; margin-bottom: 6px; gap: 10px;
+    }
+    .backup-name { font-family: var(--mono); font-size: 12px; color: var(--text); flex: 1; word-break: break-all; }
+    .backup-meta { font-size: 11px; color: var(--muted); white-space: nowrap; }
+
+    /* ── Mobile ── */
+    @media (max-width: 600px) {
+      main { padding: 16px 12px 60px; }
+      .form-grid, .form-grid-3 { grid-template-columns: 1fr; }
+      .btn-row { flex-direction: column; }
+      .btn-row .btn { width: 100%; justify-content: center; }
+      .info-row .label { min-width: 100px; }
+      #console-output { height: 300px; }
+      .stat-cards { flex-direction: column; }
+      .world-item { flex-direction: column; align-items: flex-start; gap: 10px; }
+      nav { gap: 0; }
+      nav button { padding: 10px 10px; font-size: 12px; }
+    }
+
+    /* ── Console command input ── */
+    .console-cmd {
+      display: flex; gap: 8px; margin-top: 10px;
+    }
+    .console-cmd input {
+      flex: 1; background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); font-family: var(--mono); font-size: 13px;
+      padding: 8px 12px; border-radius: 7px; transition: border-color 0.15s;
+    }
+    .console-cmd input:focus { outline: none; border-color: var(--accent); }
+
+    /* ── Stat cards ── */
+    .stat-cards { display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+    .stat-card {
+      flex: 1; min-width: 120px; background: var(--surface2);
+      border: 1px solid var(--border); border-radius: 7px;
+      padding: 10px 14px; display: flex; flex-direction: column; gap: 4px;
+    }
+    .stat-label { font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted); }
+    .stat-value { font-size: 18px; font-weight: 700; color: var(--text); font-family: var(--mono); }
+    .stat-sub { font-size: 11px; color: var(--muted); }
+
+    /* ── Player online list ── */
+    .online-player-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 7px 12px; border-radius: 6px; transition: background 0.1s;
+    }
+    .online-player-row:hover { background: var(--surface2); }
+    .online-count { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
   </style>
 </head>
 <body>
@@ -365,7 +455,7 @@
   <button onclick="switchTab('config', this)">Server Config</button>
   <button onclick="switchTab('worlds', this)">Worlds</button>
   <button onclick="switchTab('properties', this)">Properties</button>
-  <button onclick="switchTab('whitelist', this)">Whitelist</button>
+  <button onclick="switchTab('whitelist', this)">Players</button>
   <button onclick="switchTab('console', this)">Console</button>
 </nav>
 
@@ -384,13 +474,66 @@
         <code id="connection-address">—</code>
       </div>
       <div class="info-row">
+        <span class="label">Uptime</span>
+        <span class="value" id="uptime-counter" style="font-family:var(--mono)">—</span>
+      </div>
+      <div class="info-row">
         <span class="label">Last Started</span>
         <span class="value" id="started-at">—</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Restarts</span>
+        <span class="value" id="restart-count">—</span>
       </div>
       <div class="info-row">
         <span class="label">Image</span>
         <span class="value" id="image-name" style="font-family:var(--mono);font-size:12px;color:var(--text2)">—</span>
       </div>
+    </div>
+
+    <div class="card" id="card-stats" style="display:none">
+      <div class="card-title">Resource Usage</div>
+      <div class="stat-cards">
+        <div class="stat-card">
+          <div class="stat-label">CPU</div>
+          <div class="stat-value" id="stat-cpu">—</div>
+          <div class="sparkline-wrap"><svg class="sparkline" id="sparkline-cpu" viewBox="0 0 200 32" preserveAspectRatio="none"></svg></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Memory</div>
+          <div class="stat-value" id="stat-mem">—</div>
+          <div class="stat-sub" id="stat-mem-limit"></div>
+          <div class="sparkline-wrap"><svg class="sparkline" id="sparkline-mem" viewBox="0 0 200 32" preserveAspectRatio="none"></svg></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Scheduled Restart</div>
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <div class="toggle-row" style="flex:1;min-width:200px">
+          <span class="toggle-label">Enable daily auto-restart</span>
+          <label class="toggle"><input type="checkbox" id="sched-enabled" onchange="saveSchedule()" /><div class="toggle-slider"></div></label>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2)">
+          Time:
+          <input type="number" id="sched-hour" min="0" max="23" value="4"
+            style="width:56px;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:6px;font-size:13px;text-align:center"
+            onchange="saveSchedule()" />
+          <span>:</span>
+          <input type="number" id="sched-minute" min="0" max="59" value="0"
+            style="width:56px;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:6px;font-size:13px;text-align:center"
+            onchange="saveSchedule()" />
+          <span style="color:var(--muted);font-size:12px">(server local time)</span>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--muted);margin-top:10px">When enabled, the server warns players at 5 min, 1 min, and 30 s before restarting automatically.</p>
+    </div>
+
+    <div class="card" id="card-players" style="display:none">
+      <div class="card-title">Online Players</div>
+      <div class="online-count" id="player-count-label">Loading…</div>
+      <ul class="player-list" id="online-player-list"></ul>
     </div>
 
     <div class="card">
@@ -556,6 +699,16 @@
         <li class="empty-state"><span class="empty-icon">🌍</span>Loading worlds…</li>
       </ul>
     </div>
+
+    <div class="card">
+      <div class="card-title">Backups</div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:14px">
+        Snapshots are stored in <code style="font-family:var(--mono);color:var(--blue)">backups/</code> inside your data folder. Stop the server before restoring.
+      </p>
+      <div id="backup-list">
+        <li class="empty-state"><span class="empty-icon">💾</span>No backups yet</li>
+      </div>
+    </div>
   </div>
 
   <!-- ═══ PROPERTIES ═══ -->
@@ -572,7 +725,9 @@
         </div>
         <div class="form-field">
           <label>MOTD</label>
-          <input type="text" id="s-motd" placeholder="A Minecraft Server" />
+          <input type="text" id="s-motd" placeholder="A Minecraft Server" oninput="updateMotdPreview(this.value)" />
+          <div class="hint">Use §6§l for colored/bold text. Preview:</div>
+          <div class="motd-preview" id="motd-preview">A Minecraft Server</div>
         </div>
       </div>
 
@@ -692,23 +847,60 @@
         </div>
       </div>
 
+      <div class="section-title">Game Rules</div>
+      <div class="toggles">
+        <div class="toggle-row">
+          <span class="toggle-label">Keep Inventory on Death</span>
+          <label class="toggle"><input type="checkbox" id="gr-keepInventory" /><div class="toggle-slider"></div></label>
+        </div>
+      </div>
+
       <div class="mt">
-        <button class="btn btn-green" onclick="saveSettings()">Save Properties</button>
+        <button class="btn btn-green" id="btn-save-props" onclick="saveSettings()">Save Properties</button>
       </div>
     </div>
   </div>
 
-  <!-- ═══ WHITELIST ═══ -->
+  <!-- ═══ PLAYERS (Whitelist + Ops) ═══ -->
   <div class="tab-panel" id="tab-whitelist">
     <div class="card">
       <div class="card-title">Whitelist</div>
       <div class="whitelist-add">
         <input type="text" id="whitelist-input" placeholder="Player name (e.g. Notch)" maxlength="16"
                onkeydown="if(event.key==='Enter') addToWhitelist()" />
-        <button class="btn btn-green" onclick="addToWhitelist()">Add Player</button>
+        <button class="btn btn-green" id="btn-add-whitelist" onclick="addToWhitelist()">Add Player</button>
       </div>
       <ul class="player-list" id="player-list">
         <li class="empty-state"><span class="empty-icon">👤</span>Loading whitelist…</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Operators (Ops)</div>
+      <div class="banner banner-warn" style="margin-bottom:14px">
+        <span class="banner-icon">⚠</span>
+        Ops have elevated permissions (access to server commands). Be careful who you add.
+      </div>
+      <div class="whitelist-add">
+        <input type="text" id="ops-input" placeholder="Player name" maxlength="16"
+               onkeydown="if(event.key==='Enter') addToOps()" />
+        <button class="btn btn-yellow" id="btn-add-op" onclick="addToOps()">Add Op</button>
+      </div>
+      <ul class="player-list" id="ops-list">
+        <li class="empty-state"><span class="empty-icon">👑</span>Loading ops…</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Banned Players</div>
+      <div class="whitelist-add">
+        <input type="text" id="ban-input" placeholder="Player name" maxlength="16"
+               onkeydown="if(event.key==='Enter') addBan()" />
+        <input type="text" id="ban-reason" placeholder="Reason (optional)" style="flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:13px;padding:8px 12px;border-radius:7px;" />
+        <button class="btn btn-red" id="btn-add-ban" onclick="addBan()">Ban</button>
+      </div>
+      <ul class="player-list" id="ban-list">
+        <li class="empty-state"><span class="empty-icon">🚫</span>Loading bans…</li>
       </ul>
     </div>
   </div>
@@ -727,7 +919,28 @@
           <button class="btn btn-outline" style="padding:5px 12px" onclick="reconnectWs()">Reconnect</button>
         </div>
       </div>
+      <div class="log-filter">
+        <button class="filter-btn active" id="filter-info" onclick="toggleFilter('info')">INFO</button>
+        <button class="filter-btn warn active" id="filter-warn" onclick="toggleFilter('warn')">WARN</button>
+        <button class="filter-btn error active" id="filter-error" onclick="toggleFilter('error')">ERROR</button>
+        <input type="text" class="log-search" id="log-search" placeholder="Search logs…" oninput="applyLogFilter()" />
+      </div>
       <div id="console-output"></div>
+      <div style="margin-top:8px">
+        <div class="macro-list" id="macro-list">
+          <button class="macro-btn" onclick="runMacro('time set day')">☀ Day</button>
+          <button class="macro-btn" onclick="runMacro('time set night')">🌙 Night</button>
+          <button class="macro-btn" onclick="runMacro('weather clear')">⛅ Clear Weather</button>
+          <button class="macro-btn" onclick="runMacro('weather rain')">🌧 Rain</button>
+          <button class="macro-btn" onclick="runMacro('say Server restarting in 5 minutes!')">⚠ Warn Restart</button>
+          <button class="macro-btn" onclick="runMacro('list')">👥 List Players</button>
+        </div>
+      </div>
+      <div class="console-cmd">
+        <input type="text" id="rcon-input" placeholder="Enter command (e.g. say Hello, time set day, op PlayerName…)"
+               onkeydown="if(event.key==='Enter') sendConsoleCommand()" />
+        <button class="btn btn-outline" id="btn-rcon-send" onclick="sendConsoleCommand()" style="padding:8px 16px">Send</button>
+      </div>
     </div>
   </div>
 
@@ -738,6 +951,10 @@
 <script>
   let ws = null;
   let wsReconnectTimer = null;
+  let isPolling = false;
+  let isServerBusy = false;
+  let modUploading = false;
+  let worldUploading = false;
   const MAX_LOG_LINES = 1000;
 
   // ── Tab switching ──────────────────────────────────────────────────────────
@@ -747,10 +964,10 @@
     document.getElementById('tab-' + id).classList.add('active');
     btn.classList.add('active');
     if (id === 'console' && (!ws || ws.readyState === WebSocket.CLOSED)) connectWs();
-    if (id === 'whitelist') loadWhitelist();
+    if (id === 'whitelist') { loadWhitelist(); loadOpsList(); loadBanList(); }
     if (id === 'properties') loadSettings();
     if (id === 'config') loadMcConfig();
-    if (id === 'worlds') loadWorlds();
+    if (id === 'worlds') { loadWorlds(); loadBackups(); }
   }
 
   // ── Toast ──────────────────────────────────────────────────────────────────
@@ -765,13 +982,24 @@
 
   // ── Status polling ─────────────────────────────────────────────────────────
   async function pollStatus() {
+    if (isPolling) return;
+    isPolling = true;
     try {
       const r = await fetch('/api/status');
-      updateStatus(await r.json());
+      const d = await r.json();
+      updateStatus(d);
+      if (d.running) { pollStats(); pollPlayerList(); }
+      else { clearStats(); clearPlayerList(); }
     } catch {
       updateStatus({ status: 'unreachable', running: false });
+      clearStats(); clearPlayerList();
+    } finally {
+      isPolling = false;
     }
   }
+
+  let uptimeInterval = null;
+  let serverStartedAt = null;
 
   function updateStatus(d) {
     const st = d.status || 'unknown';
@@ -784,12 +1012,46 @@
     document.getElementById('connection-address').textContent =
       d.running ? `${location.hostname}:25565` : '— server offline —';
     document.getElementById('image-name').textContent = d.image || '—';
+    document.getElementById('restart-count').textContent =
+      d.restartCount != null ? `${d.restartCount} time${d.restartCount !== 1 ? 's' : ''}` : '—';
+
+    if (d.running && d.startedAt) {
+      serverStartedAt = new Date(d.startedAt);
+      if (!uptimeInterval) {
+        uptimeInterval = setInterval(tickUptime, 1000);
+        tickUptime();
+      }
+    } else {
+      clearInterval(uptimeInterval);
+      uptimeInterval = null;
+      serverStartedAt = null;
+      document.getElementById('uptime-counter').textContent = '—';
+    }
+  }
+
+  function tickUptime() {
+    if (!serverStartedAt) return;
+    const s = Math.floor((Date.now() - serverStartedAt) / 1000);
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    document.getElementById('uptime-counter').textContent =
+      `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
   }
 
   // ── Server controls ────────────────────────────────────────────────────────
+  function setServerBusy(busy) {
+    isServerBusy = busy;
+    ['btn-start', 'btn-stop', 'btn-restart', 'btn-update'].forEach(id => {
+      const b = document.getElementById(id);
+      if (b) b.disabled = busy;
+    });
+  }
+
   async function serverAction(action) {
+    if (isServerBusy) return;
+    setServerBusy(true);
     const btn = document.getElementById('btn-' + action);
-    if (btn) { btn.disabled = true; btn.textContent = '…'; }
+    const labels = { start: '▶ Start', stop: '■ Stop', restart: '↺ Restart' };
+    if (btn) btn.textContent = '…';
     try {
       const r = await fetch('/api/server/' + action, { method: 'POST' });
       const d = await r.json();
@@ -798,17 +1060,16 @@
     } catch (err) {
       showToast('Request failed: ' + err.message, 'error');
     } finally {
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = action === 'start' ? '▶ Start' : action === 'stop' ? '■ Stop' : '↺ Restart';
-      }
+      setServerBusy(false);
+      if (btn) btn.textContent = labels[action] || action;
     }
   }
 
   async function updateServer() {
+    if (isServerBusy) return;
+    setServerBusy(true);
     const btn = document.getElementById('btn-update');
-    btn.disabled = true;
-    btn.textContent = '⬇ Pulling image… (may take 1–2 min)';
+    if (btn) btn.textContent = '⬇ Pulling image… (may take 1–2 min)';
     showToast('Pulling latest image — please wait…', 'info');
     try {
       const r = await fetch('/api/server/update', { method: 'POST' });
@@ -818,8 +1079,8 @@
     } catch (err) {
       showToast('Update failed: ' + err.message, 'error');
     } finally {
-      btn.disabled = false;
-      btn.textContent = '⬇ Pull Update & Restart';
+      setServerBusy(false);
+      if (btn) btn.textContent = '⬇ Pull Update & Restart';
     }
   }
 
@@ -941,6 +1202,8 @@
   }
 
   async function uploadMods(files) {
+    if (modUploading) return;
+    modUploading = true;
     const statusEl = document.getElementById('mod-upload-status');
     statusEl.style.display = 'block';
     let failed = 0;
@@ -963,6 +1226,7 @@
     if (ok > 0) showToast(`${ok} mod${ok > 1 ? 's' : ''} uploaded — restart server to apply`);
     document.getElementById('mod-file-input').value = '';
     setTimeout(() => { statusEl.style.display = 'none'; }, 4000);
+    modUploading = false;
     loadMods();
   }
 
@@ -988,21 +1252,28 @@
         list.innerHTML = '<li class="empty-state"><span class="empty-icon">🌍</span>No world saves found yet.<br>Start the server to generate one.</li>';
         return;
       }
-      list.innerHTML = worlds.map(w => `
+      list.innerHTML = worlds.map(({ name: w, sizeMB }) => `
         <li class="world-item ${w === active ? 'active-world' : ''}">
           <div class="world-item-left">
             <span class="world-icon">${w === active ? '🌟' : '🌍'}</span>
-            <span class="world-name">${escHtml(w)}</span>
-            ${w === active ? '<span class="active-chip">Active</span>' : ''}
+            <div>
+              <span class="world-name">${escHtml(w)}</span>
+              ${w === active ? '<span class="active-chip">Active</span>' : ''}
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">${sizeMB}</div>
+            </div>
           </div>
           <div class="btn-row">
+            <button class="btn btn-outline" style="padding:5px 12px;font-size:12px"
+              onclick="backupWorld('${escHtml(w)}')">💾 Backup</button>
             <button class="btn btn-outline" style="padding:5px 12px;font-size:12px"
               onclick="exportWorld('${escHtml(w)}')">⬇ Export</button>
             <button class="btn btn-outline" style="padding:5px 12px;font-size:12px"
               onclick="renameWorld('${escHtml(w)}')">✏ Rename</button>
             ${w !== active
               ? `<button class="btn btn-green" style="padding:5px 12px;font-size:12px"
-                  onclick="setActiveWorld('${escHtml(w)}')">▶ Set Active</button>`
+                  onclick="setActiveWorld('${escHtml(w)}')">▶ Set Active</button>
+                 <button class="btn btn-outline" style="padding:5px 12px;font-size:12px;color:var(--red);border-color:var(--red-dim)"
+                  onclick="deleteWorld('${escHtml(w)}')">🗑 Delete</button>`
               : ''}
           </div>
         </li>
@@ -1070,10 +1341,12 @@
   }
 
   function uploadWorldFile(file) {
+    if (worldUploading) return;
     if (!file.name.toLowerCase().endsWith('.zip')) {
       showToast('Only .zip files are accepted', 'error');
       return;
     }
+    worldUploading = true;
     const prog = document.getElementById('upload-progress');
     const bar = document.getElementById('progress-bar');
     const status = document.getElementById('upload-status');
@@ -1095,6 +1368,7 @@
     };
 
     xhr.onload = () => {
+      worldUploading = false;
       bar.style.width = '100%';
       try {
         const d = JSON.parse(xhr.responseText);
@@ -1105,18 +1379,22 @@
           document.getElementById('world-file-input').value = '';
           setTimeout(() => { prog.style.display = 'none'; }, 3000);
         } else {
+          document.getElementById('world-file-input').value = '';
           status.textContent = `Error: ${d.error}`;
           showToast(d.error || 'Upload failed', 'error');
         }
       } catch {
+        document.getElementById('world-file-input').value = '';
         status.textContent = 'Server error';
         showToast('Upload failed', 'error');
       }
     };
 
     xhr.onerror = () => {
+      worldUploading = false;
       status.textContent = 'Upload failed — network error';
       showToast('Upload failed', 'error');
+      document.getElementById('world-file-input').value = '';
     };
 
     xhr.send(form);
@@ -1135,6 +1413,7 @@
       };
       set('s-server-name', 'server-name');
       set('s-motd', 'motd');
+      updateMotdPreview(s['motd'] || '');
       set('s-gamemode', 'gamemode');
       set('s-difficulty', 'difficulty');
       set('s-max-players', 'max-players');
@@ -1156,9 +1435,34 @@
       set('s-force-gamemode', 'force-gamemode');
       set('s-prevent-proxy-connections', 'prevent-proxy-connections');
     } catch { showToast('Failed to load properties', 'error'); }
+
+    try {
+      const gr = await fetch('/api/gamerules').then(r => r.json());
+      const keepEl = document.getElementById('gr-keepInventory');
+      if (keepEl) keepEl.checked = gr.keepInventory === true;
+    } catch { /* gamerules not critical */ }
   }
 
   async function saveSettings() {
+    const intRange = (id, min, max, label) => {
+      const v = parseInt(document.getElementById(id)?.value, 10);
+      if (isNaN(v) || v < min || v > max) { showToast(`${label} must be ${min}–${max}`, 'error'); return null; }
+      return v;
+    };
+    const nonNeg = (id, label) => {
+      const v = parseInt(document.getElementById(id)?.value, 10);
+      if (isNaN(v) || v < 0) { showToast(`${label} must be 0 or more`, 'error'); return null; }
+      return v;
+    };
+    if (intRange('s-max-players', 1, 1000, 'Max Players') === null) return;
+    if (intRange('s-view-distance', 2, 32, 'View Distance') === null) return;
+    if (intRange('s-simulation-distance', 2, 32, 'Simulation Distance') === null) return;
+    if (nonNeg('s-player-idle-timeout', 'Player Idle Timeout') === null) return;
+    if (nonNeg('s-spawn-protection', 'Spawn Protection') === null) return;
+
+    const btn = document.getElementById('btn-save-props');
+    if (btn) btn.disabled = true;
+
     const get = (id) => {
       const el = document.getElementById(id);
       if (!el) return undefined;
@@ -1193,9 +1497,19 @@
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
       });
       const d = await r.json();
-      if (d.success) showToast('Properties saved — restart server to apply');
-      else showToast(d.error || 'Save failed', 'error');
-    } catch (err) { showToast('Save failed: ' + err.message, 'error'); }
+      if (!d.success) { showToast(d.error || 'Save failed', 'error'); return; }
+
+      const grBody = { keepInventory: document.getElementById('gr-keepInventory')?.checked ?? false };
+      const gr = await fetch('/api/gamerules', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(grBody),
+      }).then(r2 => r2.json()).catch(() => ({}));
+      if (gr.rconOk) showToast('Properties & game rules saved');
+      else showToast('Properties saved — restart server to apply game rules');
+    } catch (err) {
+      showToast('Save failed: ' + err.message, 'error');
+    } finally {
+      if (btn) btn.disabled = false;
+    }
   }
 
   // ── Whitelist ──────────────────────────────────────────────────────────────
@@ -1228,16 +1542,19 @@
 
   async function addToWhitelist() {
     const input = document.getElementById('whitelist-input');
+    const btn = document.getElementById('btn-add-whitelist');
     const name = input.value.trim();
     if (!name) return;
+    if (btn) btn.disabled = true;
     try {
       const r = await fetch('/api/whitelist/add', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }),
       });
       const d = await r.json();
-      if (d.success) { input.value = ''; showToast(`${name} added`); loadWhitelist(); }
+      if (d.success) { input.value = ''; showToast(`${name} added to whitelist`); loadWhitelist(); }
       else showToast(d.error || 'Add failed', 'error');
     } catch { showToast('Request failed', 'error'); }
+    finally { if (btn) btn.disabled = false; }
   }
 
   async function removeFromWhitelist(name) {
@@ -1250,15 +1567,24 @@
   }
 
   // ── Console ────────────────────────────────────────────────────────────────
-  function connectWs() {
-    if (ws && ws.readyState === WebSocket.OPEN) return;
+  function closeWs() {
     clearTimeout(wsReconnectTimer);
+    if (ws) {
+      ws.onopen = null; ws.onmessage = null; ws.onclose = null; ws.onerror = null;
+      try { ws.close(); } catch (_) {}
+      ws = null;
+    }
+  }
+
+  function connectWs() {
+    closeWs();
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
     ws = new WebSocket(`${proto}//${location.host}/logs`);
     setWsStatus('connecting', 'Connecting…');
     ws.onopen = () => setWsStatus('connected', 'Connected');
     ws.onmessage = (e) => appendLog(e.data);
     ws.onclose = () => {
+      ws = null;
       setWsStatus('disconnected', 'Disconnected');
       wsReconnectTimer = setTimeout(() => {
         if (document.getElementById('tab-console').classList.contains('active')) connectWs();
@@ -1267,10 +1593,7 @@
     ws.onerror = () => setWsStatus('disconnected', 'Error');
   }
 
-  function reconnectWs() {
-    if (ws) { try { ws.close(); } catch (_) {} }
-    connectWs();
-  }
+  function reconnectWs() { connectWs(); }
 
   function clearConsole() { document.getElementById('console-output').innerHTML = ''; }
 
@@ -1279,14 +1602,45 @@
     document.getElementById('ws-status-text').textContent = label;
   }
 
+  const logFilters = { info: true, warn: true, error: true };
+
+  function toggleFilter(type) {
+    logFilters[type] = !logFilters[type];
+    const btn = document.getElementById('filter-' + type);
+    if (btn) btn.classList.toggle('active', logFilters[type]);
+    applyLogFilter();
+  }
+
+  function applyLogFilter() {
+    const search = (document.getElementById('log-search')?.value || '').toLowerCase();
+    const out = document.getElementById('console-output');
+    for (const span of out.children) {
+      const cls = span.className;
+      const isWarn = cls.includes('log-warn');
+      const isError = cls.includes('log-error');
+      const isInfo = !isWarn && !isError;
+      const typeOk = (isError && logFilters.error) || (isWarn && logFilters.warn) || (isInfo && logFilters.info);
+      const searchOk = !search || span.textContent.toLowerCase().includes(search);
+      span.style.display = typeOk && searchOk ? '' : 'none';
+    }
+  }
+
   function appendLog(raw) {
     const out = document.getElementById('console-output');
     const span = document.createElement('span');
-    span.className = 'log-line ' + classifyLog(raw);
+    const cls = classifyLog(raw);
+    span.className = 'log-line ' + cls;
     span.textContent = raw;
+    const isWarn = cls === 'log-warn';
+    const isError = cls === 'log-error';
+    const isInfo = !isWarn && !isError;
+    const search = (document.getElementById('log-search')?.value || '').toLowerCase();
+    const typeOk = (isError && logFilters.error) || (isWarn && logFilters.warn) || (isInfo && logFilters.info);
+    const searchOk = !search || raw.toLowerCase().includes(search);
+    if (!typeOk || !searchOk) span.style.display = 'none';
     out.appendChild(span);
     while (out.children.length > MAX_LOG_LINES) out.removeChild(out.firstChild);
-    out.scrollTop = out.scrollHeight;
+    if (typeOk && searchOk) out.scrollTop = out.scrollHeight;
   }
 
   function classifyLog(line) {
@@ -1301,10 +1655,410 @@
     return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
+  // ── Console command (RCON) ─────────────────────────────────────────────────
+  async function sendConsoleCommand() {
+    const input = document.getElementById('rcon-input');
+    const btn = document.getElementById('btn-rcon-send');
+    const cmd = input.value.trim();
+    if (!cmd) return;
+    if (btn) btn.disabled = true;
+    input.disabled = true;
+    try {
+      const r = await fetch('/api/rcon', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command: cmd }),
+      });
+      const d = await r.json();
+      appendLog(`> ${cmd}`);
+      if (d.output) appendLog(d.output);
+      if (d.error) appendLog(`Error: ${d.error}`);
+      input.value = '';
+    } catch (err) {
+      appendLog(`Error sending command: ${err.message}`);
+    } finally {
+      if (btn) btn.disabled = false;
+      input.disabled = false;
+      input.focus();
+    }
+  }
+
+  // ── Live player list ───────────────────────────────────────────────────────
+  async function pollPlayerList() {
+    try {
+      const r = await fetch('/api/players');
+      const d = await r.json();
+      if (d.error) { clearPlayerList(); return; }
+      const card = document.getElementById('card-players');
+      const label = document.getElementById('player-count-label');
+      const list = document.getElementById('online-player-list');
+      if (card) card.style.display = 'block';
+      if (label) label.textContent = `${d.online} / ${d.max} players online`;
+      if (list) {
+        if (!d.players.length) {
+          list.innerHTML = '<li class="empty-state" style="padding:12px 0;font-size:13px">No players online</li>';
+        } else {
+          list.innerHTML = d.players.map(name => `
+            <li class="online-player-row">
+              <div class="player-name-row">
+                <div class="player-avatar">
+                  <img src="https://mc-heads.net/avatar/${encodeURIComponent(name)}/28" alt="${escHtml(name)}"
+                       onerror="this.style.display='none'" loading="lazy" />
+                </div>
+                ${escHtml(name)}
+              </div>
+              <div class="btn-row">
+                <button class="btn btn-outline" style="padding:3px 8px;font-size:11px" title="Add to whitelist" onclick="quickWhitelist('${escHtml(name)}')">+WL</button>
+                <button class="btn btn-outline" style="padding:3px 8px;font-size:11px;color:var(--yellow);border-color:var(--yellow-dim)" title="Make operator" onclick="quickOp('${escHtml(name)}')">Op</button>
+                <button class="btn btn-outline" style="padding:3px 8px;font-size:11px;color:var(--red);border-color:var(--red-dim)" title="Kick" onclick="kickPlayer('${escHtml(name)}')">Kick</button>
+                <button class="btn btn-outline" style="padding:3px 8px;font-size:11px;color:var(--red);border-color:var(--red-dim)" title="Ban" onclick="quickBan('${escHtml(name)}')">Ban</button>
+              </div>
+            </li>
+          `).join('');
+        }
+      }
+    } catch { clearPlayerList(); }
+  }
+
+  function clearPlayerList() {
+    const card = document.getElementById('card-players');
+    if (card) card.style.display = 'none';
+  }
+
+  async function kickPlayer(name) {
+    if (!confirm(`Kick "${name}" from the server?`)) return;
+    try {
+      await fetch('/api/rcon', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command: `kick ${name}` }),
+      });
+      showToast(`${name} kicked`);
+      setTimeout(pollPlayerList, 1000);
+    } catch { showToast('Kick failed', 'error'); }
+  }
+
+  // ── CPU / RAM stats + sparklines ───────────────────────────────────────────
+  const cpuHistory = [], memHistory = [];
+  const HISTORY_MAX = 40;
+
+  function drawSparkline(svgId, data, color) {
+    const svg = document.getElementById(svgId);
+    if (!svg || data.length < 2) return;
+    const W = 200, H = 32;
+    const max = Math.max(...data, 1);
+    const pts = data.map((v, i) => {
+      const x = (i / (data.length - 1)) * W;
+      const y = H - (v / max) * (H - 4) - 2;
+      return `${x},${y}`;
+    }).join(' ');
+    svg.innerHTML = `<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+  }
+
+  async function pollStats() {
+    try {
+      const r = await fetch('/api/stats');
+      const d = await r.json();
+      if (d.error) { clearStats(); return; }
+      const card = document.getElementById('card-stats');
+      if (card) card.style.display = 'block';
+      document.getElementById('stat-cpu').textContent = `${d.cpuPercent}%`;
+      document.getElementById('stat-mem').textContent = d.memUsedMB >= 1024
+        ? `${(d.memUsedMB / 1024).toFixed(1)} GB` : `${d.memUsedMB} MB`;
+      document.getElementById('stat-mem-limit').textContent =
+        `of ${d.memLimitMB >= 1024 ? (d.memLimitMB / 1024).toFixed(1) + ' GB' : d.memLimitMB + ' MB'}`;
+      cpuHistory.push(d.cpuPercent); if (cpuHistory.length > HISTORY_MAX) cpuHistory.shift();
+      const memPct = d.memLimitMB > 0 ? (d.memUsedMB / d.memLimitMB) * 100 : 0;
+      memHistory.push(memPct); if (memHistory.length > HISTORY_MAX) memHistory.shift();
+      drawSparkline('sparkline-cpu', cpuHistory, 'var(--accent)');
+      drawSparkline('sparkline-mem', memHistory, 'var(--blue)');
+    } catch { clearStats(); }
+  }
+
+  function clearStats() {
+    const card = document.getElementById('card-stats');
+    if (card) card.style.display = 'none';
+    cpuHistory.length = 0; memHistory.length = 0;
+  }
+
+  // ── Ops management ─────────────────────────────────────────────────────────
+  async function loadOpsList() {
+    try {
+      const r = await fetch('/api/ops');
+      renderOps(await r.json());
+    } catch { showToast('Failed to load ops', 'error'); }
+  }
+
+  function renderOps(list) {
+    const el = document.getElementById('ops-list');
+    if (!list.length) {
+      el.innerHTML = '<li class="empty-state"><span class="empty-icon">👑</span>No operators added</li>';
+      return;
+    }
+    el.innerHTML = list.map(p => `
+      <li class="player-item">
+        <div class="player-name-row">
+          <div class="player-avatar">
+            <img src="https://mc-heads.net/avatar/${encodeURIComponent(p.name)}/28" alt="${escHtml(p.name)}"
+                 onerror="this.style.display='none'" loading="lazy" />
+          </div>
+          ${escHtml(p.name)}
+        </div>
+        <button class="btn-icon" onclick="removeFromOps('${escHtml(p.name)}')" title="Remove op">✕</button>
+      </li>
+    `).join('');
+  }
+
+  async function addToOps() {
+    const input = document.getElementById('ops-input');
+    const btn = document.getElementById('btn-add-op');
+    const name = input.value.trim();
+    if (!name) return;
+    if (btn) btn.disabled = true;
+    try {
+      const r = await fetch('/api/ops/add', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }),
+      });
+      const d = await r.json();
+      if (d.success) { input.value = ''; showToast(`${name} added as operator`); loadOpsList(); }
+      else showToast(d.error || 'Add failed', 'error');
+    } catch { showToast('Request failed', 'error'); }
+    finally { if (btn) btn.disabled = false; }
+  }
+
+  async function removeFromOps(name) {
+    try {
+      const r = await fetch('/api/ops/' + encodeURIComponent(name), { method: 'DELETE' });
+      const d = await r.json();
+      if (d.success) { showToast(`${name} removed from ops`); loadOpsList(); }
+      else showToast(d.error || 'Remove failed', 'error');
+    } catch { showToast('Request failed', 'error'); }
+  }
+
+  // ── Ban management ─────────────────────────────────────────────────────────
+  async function loadBanList() {
+    try {
+      const r = await fetch('/api/bans');
+      renderBans(await r.json());
+    } catch { showToast('Failed to load bans', 'error'); }
+  }
+
+  function renderBans(list) {
+    const el = document.getElementById('ban-list');
+    if (!list.length) {
+      el.innerHTML = '<li class="empty-state"><span class="empty-icon">🚫</span>No banned players</li>';
+      return;
+    }
+    el.innerHTML = list.map(p => `
+      <li class="player-item">
+        <div class="player-name-row">
+          <div class="player-avatar">
+            <img src="https://mc-heads.net/avatar/${encodeURIComponent(p.name)}/28" alt="${escHtml(p.name)}"
+                 onerror="this.style.display='none'" loading="lazy" />
+          </div>
+          <div>
+            <div>${escHtml(p.name)}</div>
+            ${p.reason ? `<div style="font-size:11px;color:var(--muted)">${escHtml(p.reason)}</div>` : ''}
+          </div>
+        </div>
+        <button class="btn-icon" onclick="removeBan('${escHtml(p.name)}')" title="Unban">✕</button>
+      </li>
+    `).join('');
+  }
+
+  async function addBan() {
+    const input = document.getElementById('ban-input');
+    const reasonEl = document.getElementById('ban-reason');
+    const btn = document.getElementById('btn-add-ban');
+    const name = input.value.trim();
+    const reason = reasonEl ? reasonEl.value.trim() : '';
+    if (!name) return;
+    if (btn) btn.disabled = true;
+    try {
+      const r = await fetch('/api/bans/add', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, reason }),
+      });
+      const d = await r.json();
+      if (d.success) { input.value = ''; if (reasonEl) reasonEl.value = ''; showToast(`${name} banned`); loadBanList(); }
+      else showToast(d.error || 'Ban failed', 'error');
+    } catch { showToast('Request failed', 'error'); }
+    finally { if (btn) btn.disabled = false; }
+  }
+
+  async function removeBan(name) {
+    try {
+      const r = await fetch('/api/bans/' + encodeURIComponent(name), { method: 'DELETE' });
+      const d = await r.json();
+      if (d.success) { showToast(`${name} unbanned`); loadBanList(); }
+      else showToast(d.error || 'Unban failed', 'error');
+    } catch { showToast('Request failed', 'error'); }
+  }
+
+  // ── Quick actions on online players ───────────────────────────────────────
+  async function quickWhitelist(name) {
+    try {
+      await fetch('/api/whitelist/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
+      showToast(`${name} added to whitelist`);
+    } catch { showToast('Failed', 'error'); }
+  }
+
+  async function quickOp(name) {
+    try {
+      await fetch('/api/ops/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
+      showToast(`${name} opped`);
+    } catch { showToast('Failed', 'error'); }
+  }
+
+  async function quickBan(name) {
+    if (!confirm(`Ban "${name}"?`)) return;
+    try {
+      await fetch('/api/bans/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
+      showToast(`${name} banned`);
+      setTimeout(pollPlayerList, 1000);
+    } catch { showToast('Failed', 'error'); }
+  }
+
+  // ── World delete & backups ─────────────────────────────────────────────────
+  async function deleteWorld(name) {
+    if (!confirm(`Permanently delete world "${name}"? This cannot be undone.`)) return;
+    try {
+      const r = await fetch('/api/worlds/' + encodeURIComponent(name), { method: 'DELETE' });
+      const d = await r.json();
+      if (d.success) { showToast(`"${name}" deleted`); loadWorlds(); }
+      else showToast(d.error || 'Delete failed', 'error');
+    } catch { showToast('Request failed', 'error'); }
+  }
+
+  async function backupWorld(name) {
+    const btn = event.target;
+    if (btn) btn.disabled = true;
+    showToast(`Creating backup of "${name}"…`, 'info');
+    try {
+      const r = await fetch(`/api/worlds/${encodeURIComponent(name)}/backup`, { method: 'POST' });
+      const d = await r.json();
+      if (d.success) { showToast(`Backup saved: ${d.backupName}`); loadBackups(); }
+      else showToast(d.error || 'Backup failed', 'error');
+    } catch { showToast('Backup failed', 'error'); }
+    finally { if (btn) btn.disabled = false; }
+  }
+
+  async function loadBackups() {
+    try {
+      const r = await fetch('/api/backups');
+      const backups = await r.json();
+      const el = document.getElementById('backup-list');
+      if (!backups.length) {
+        el.innerHTML = '<div class="empty-state"><span class="empty-icon">💾</span>No backups yet — click 💾 Backup on a world to create one.</div>';
+        return;
+      }
+      el.innerHTML = backups.map(b => `
+        <div class="backup-item">
+          <div class="backup-name">${escHtml(b.name)}</div>
+          <div class="backup-meta">${b.sizeMB} MB</div>
+          <div class="btn-row">
+            <a href="/api/backups/${encodeURIComponent(b.name)}/download" class="btn btn-outline" style="padding:4px 10px;font-size:12px;text-decoration:none">⬇</a>
+            <button class="btn btn-outline" style="padding:4px 10px;font-size:12px;color:var(--accent);border-color:var(--accent-dim)"
+              onclick="restoreBackup('${escHtml(b.name)}')">↩ Restore</button>
+            <button class="btn btn-outline" style="padding:4px 10px;font-size:12px;color:var(--red);border-color:var(--red-dim)"
+              onclick="deleteBackup('${escHtml(b.name)}')">✕</button>
+          </div>
+        </div>
+      `).join('');
+    } catch { showToast('Failed to load backups', 'error'); }
+  }
+
+  async function restoreBackup(filename) {
+    if (!confirm(`Restore backup "${filename}"? This will overwrite the existing world folder.`)) return;
+    try {
+      const r = await fetch(`/api/backups/${encodeURIComponent(filename)}/restore`, { method: 'POST' });
+      const d = await r.json();
+      if (d.success) { showToast(`Restored as "${d.worldName}" — set it active to use it`); loadWorlds(); }
+      else showToast(d.error || 'Restore failed', 'error');
+    } catch { showToast('Request failed', 'error'); }
+  }
+
+  async function deleteBackup(filename) {
+    if (!confirm(`Delete backup "${filename}"?`)) return;
+    try {
+      const r = await fetch(`/api/backups/${encodeURIComponent(filename)}`, { method: 'DELETE' });
+      const d = await r.json();
+      if (d.success) { showToast('Backup deleted'); loadBackups(); }
+      else showToast(d.error || 'Failed', 'error');
+    } catch { showToast('Request failed', 'error'); }
+  }
+
+  // ── MOTD preview ───────────────────────────────────────────────────────────
+  const MOTD_COLORS = {
+    '0':'#000','1':'#00A','2':'#0A0','3':'#0AA','4':'#A00','5':'#A0A',
+    '6':'#FA0','7':'#AAA','8':'#555','9':'#55F','a':'#5F5','b':'#5FF',
+    'c':'#F55','d':'#F5F','e':'#FF5','f':'#FFF',
+  };
+
+  function updateMotdPreview(text) {
+    const el = document.getElementById('motd-preview');
+    if (!el) return;
+    let html = '', bold = false, italic = false, color = '#AAA';
+    const chars = [...text];
+    for (let i = 0; i < chars.length; i++) {
+      if ((chars[i] === '§' || chars[i] === '&') && i + 1 < chars.length) {
+        const code = chars[++i].toLowerCase();
+        if (MOTD_COLORS[code]) { color = MOTD_COLORS[code]; bold = false; italic = false; }
+        else if (code === 'l') bold = true;
+        else if (code === 'o') italic = true;
+        else if (code === 'r') { color = '#AAA'; bold = false; italic = false; }
+        continue;
+      }
+      const c = chars[i].replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      html += `<span style="color:${color}${bold?';font-weight:bold':''}${italic?';font-style:italic':''}">${c}</span>`;
+    }
+    el.innerHTML = html || '<span style="color:var(--muted)">Preview will appear here</span>';
+  }
+
+  // ── Scheduled restart ─────────────────────────────────────────────────────
+  async function loadSchedule() {
+    try {
+      const r = await fetch('/api/schedule');
+      const s = await r.json();
+      const en = document.getElementById('sched-enabled');
+      const h = document.getElementById('sched-hour');
+      const m = document.getElementById('sched-minute');
+      if (en) en.checked = s.enabled;
+      if (h) h.value = String(s.hour).padStart(2, '0');
+      if (m) m.value = String(s.minute).padStart(2, '0');
+    } catch { /* not critical */ }
+  }
+
+  async function saveSchedule() {
+    try {
+      await fetch('/api/schedule', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          enabled: document.getElementById('sched-enabled')?.checked ?? false,
+          hour: parseInt(document.getElementById('sched-hour')?.value, 10) || 4,
+          minute: parseInt(document.getElementById('sched-minute')?.value, 10) || 0,
+        }),
+      });
+      showToast('Schedule saved');
+    } catch { showToast('Failed to save schedule', 'error'); }
+  }
+
+  // ── Macro runner ───────────────────────────────────────────────────────────
+  async function runMacro(cmd) {
+    try {
+      const r = await fetch('/api/rcon', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command: cmd }),
+      });
+      const d = await r.json();
+      appendLog(`> ${cmd}`);
+      if (d.output) appendLog(d.output);
+    } catch { showToast('Command failed', 'error'); }
+  }
+
   // ── Bootstrap ──────────────────────────────────────────────────────────────
   pollStatus();
   setInterval(pollStatus, 5000);
   loadSettings();
+  loadSchedule();
 </script>
 </body>
 </html>
