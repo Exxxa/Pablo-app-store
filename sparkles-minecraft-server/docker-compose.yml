@@ -24,7 +24,7 @@ services:
       - ${APP_DATA_DIR}/minecraft:/data
 
   ui:
-    image: exxxa/sparkles-minecraft-server-ui:latest
+    image: exxxa/sparkles-minecraft-server-ui:1.1.0
     container_name: sparkles-minecraft-server_ui_1
     restart: unless-stopped
     environment:
