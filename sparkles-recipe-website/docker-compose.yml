@@ -12,7 +12,7 @@ services:
     restart: unless-stopped
     stop_grace_period: 1m
     ports:
-      - "127.0.0.1:2383:2382"
+      - "2383:2382"
     volumes:
       - "${APP_DATA_DIR}/data:/app/data"
       - "${APP_DATA_DIR}/uploads:/app/uploads"
@@ -20,3 +20,4 @@ services:
       PORT: "2382"
       DATABASE_URL: "file:/app/data/recipes.db"
       JWT_SECRET: "${APP_SEED}"
+      ALLOWED_ORIGIN: "https://recipe.pabloushka.org"
