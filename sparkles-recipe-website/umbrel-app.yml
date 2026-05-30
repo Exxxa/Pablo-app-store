@@ -1,0 +1,28 @@
+manifestVersion: 1
+id: sparkles-recipe-website
+version: "1.0.0"
+category: files
+name: Recipe Book
+tagline: Self-hosted family recipe manager with Claude AI integration
+description: >-
+  A self-hosted recipe manager with full-text search, photo uploads,
+  wellness tracking, and Claude AI integration via MCP (Model Context Protocol).
+  Features admin panel, email whitelist for controlled registration,
+  per-user secure MCP tokens to connect Claude.ai directly to your recipes,
+  and ownership-enforced recipe management. All data stays on your Umbrel.
+developer: Pierre LOPEZ
+website: ""
+dependencies: []
+repo: ""
+support: ""
+port: 2382
+gallery: []
+releaseNotes: >-
+  Initial release. Includes recipe management, photo uploads, wellness tracking,
+  Claude AI integration via MCP, admin panel, and email whitelist for controlled access.
+defaultUsername: ""
+defaultPassword: ""
+torOnly: false
+permissions: []
+submitter: Pierre LOPEZ
+submission: ""

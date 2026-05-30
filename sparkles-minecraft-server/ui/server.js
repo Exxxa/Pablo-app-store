@@ -178,7 +178,12 @@ async function recreateContainer(mcSettings) {
     ),
   };
 
-  try { await container.stop({ t: 15 }); } catch (_) {}
+  try {
+    await sendRconCommand('save-all');
+    await new Promise(r => setTimeout(r, 2000));
+    await sendRconCommand('stop');
+  } catch (_) {}
+  try { await container.stop({ t: 30 }); } catch (_) {}
   await container.remove();
 
   const newContainer = await docker.createContainer({
@@ -290,8 +295,16 @@ app.post('/api/server/start', async (_req, res) => {
 });
 
 app.post('/api/server/stop', async (_req, res) => {
-  try { const c = await getContainer(); await c.stop(); res.json({ success: true }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+  try {
+    try {
+      await sendRconCommand('save-all');
+      await new Promise(r => setTimeout(r, 2000));
+      await sendRconCommand('stop');
+    } catch (_) {}
+    const c = await getContainer();
+    await c.stop({ t: 30 });
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/server/restart', async (_req, res) => {
@@ -909,7 +922,29 @@ wss.on('connection', async (ws) => {
   }
 });
 
+async function reconcileContainerOnStartup() {
+  if (!fs.existsSync(MC_SETTINGS_FILE)) return;
+  const saved = readMcSettings();
+  try {
+    const container = await getContainer();
+    const info = await container.inspect();
+    const runningEnv = Object.fromEntries(
+      (info.Config.Env || []).map(e => {
+        const i = e.indexOf('=');
+        return [e.slice(0, i), e.slice(i + 1)];
+      })
+    );
+    if (runningEnv.VERSION !== saved.VERSION || runningEnv.TYPE !== saved.TYPE) {
+      console.log(`[reconcile] Env mismatch (running VERSION=${runningEnv.VERSION} TYPE=${runningEnv.TYPE}, saved VERSION=${saved.VERSION} TYPE=${saved.TYPE}) — recreating container`);
+      await recreateContainer(saved);
+    }
+  } catch (err) {
+    console.error('[reconcile] Failed:', err.message);
+  }
+}
+
 const PORT = process.env.PORT || 25566;
 server.listen(PORT, () => {
   console.log(`Minecraft UI on :${PORT} | Container: ${CONTAINER_NAME} | Data: ${DATA_DIR}`);
+  setTimeout(reconcileContainerOnStartup, 10000);
 });
