@@ -1,6 +1,6 @@
 manifestVersion: 1
 id: sparkles-recipe-website
-version: "1.0.4"
+version: "1.0.5"
 category: files
 name: Recipe Book
 tagline: Self-hosted family recipe manager with Claude AI integration
