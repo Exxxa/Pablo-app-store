@@ -11,6 +11,8 @@ services:
     container_name: sparkles-recipe-website_app_1
     restart: unless-stopped
     stop_grace_period: 1m
+    ports:
+      - "127.0.0.1:2383:2382"
     volumes:
       - "${APP_DATA_DIR}/data:/app/data"
       - "${APP_DATA_DIR}/uploads:/app/uploads"
