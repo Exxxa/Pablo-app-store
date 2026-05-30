@@ -20,4 +20,3 @@ services:
       PORT: "2382"
       DATABASE_URL: "file:/app/data/recipes.db"
       JWT_SECRET: "${APP_SEED}"
-      ALLOWED_ORIGIN: "https://recipe.pabloushka.org"
