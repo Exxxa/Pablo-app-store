@@ -1,9 +1,10 @@
 manifestVersion: 1
 id: sparkles-recipe-website
-version: "1.1.0"
+version: "1.1.3"
 category: files
 name: Recipe Book
 tagline: Self-hosted family recipe manager with Claude AI integration
+icon: https://raw.githubusercontent.com/Exxxa/Pablo-app-store/master/sparkles-recipe-website/icon.png
 description: >-
   A self-hosted recipe manager with full-text search, photo uploads,
   wellness tracking, and Claude AI integration via MCP (Model Context Protocol).
