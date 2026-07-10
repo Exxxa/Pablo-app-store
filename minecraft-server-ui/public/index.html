@@ -835,6 +835,28 @@
     </div>
 
     <div class="card">
+      <div class="card-title">Scheduled Backups</div>
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <div class="toggle-row" style="flex:1;min-width:200px">
+          <span class="toggle-label">Auto-backup the active world</span>
+          <label class="toggle"><input type="checkbox" id="bak-enabled" onchange="saveBackupSchedule()" /><div class="toggle-slider"></div></label>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2)">
+          Every
+          <input type="number" id="bak-interval" min="1" max="168" value="12"
+            style="width:56px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.11);color:var(--text);padding:6px 8px;border-radius:8px;font-size:13px;text-align:center"
+            onchange="saveBackupSchedule()" />
+          hours, keep
+          <input type="number" id="bak-keep" min="1" max="50" value="5"
+            style="width:56px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.11);color:var(--text);padding:6px 8px;border-radius:8px;font-size:13px;text-align:center"
+            onchange="saveBackupSchedule()" />
+          <span style="color:var(--muted);font-size:12px">latest</span>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--muted);margin-top:10px">Automatic snapshots of the active world are saved to <code style="font-family:var(--mono);color:var(--blue)">backups/</code> (named <code style="font-family:var(--mono)">…_auto_…</code>). If the server is running, saves are flushed and briefly paused for a consistent copy. Older auto-backups beyond the keep count are removed; manual backups are never touched.</p>
+    </div>
+
+    <div class="card">
       <div class="card-title">Backups</div>
       <p style="font-size:12px;color:var(--muted);margin-bottom:14px">
         Snapshots are stored in <code style="font-family:var(--mono);color:var(--blue)">backups/</code> inside your data folder. Stop the server before restoring.
@@ -2133,6 +2155,34 @@
     } catch { showToast('Failed to save schedule', 'error'); }
   }
 
+  // ── Scheduled backups ─────────────────────────────────────────────────────
+  async function loadBackupSchedule() {
+    try {
+      const r = await fetch('/api/backup-schedule');
+      const s = await r.json();
+      const en = document.getElementById('bak-enabled');
+      const iv = document.getElementById('bak-interval');
+      const kp = document.getElementById('bak-keep');
+      if (en) en.checked = s.enabled;
+      if (iv) iv.value = s.intervalHours;
+      if (kp) kp.value = s.keep;
+    } catch { /* not critical */ }
+  }
+
+  async function saveBackupSchedule() {
+    try {
+      await fetch('/api/backup-schedule', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          enabled: document.getElementById('bak-enabled')?.checked ?? false,
+          intervalHours: parseInt(document.getElementById('bak-interval')?.value, 10) || 12,
+          keep: parseInt(document.getElementById('bak-keep')?.value, 10) || 5,
+        }),
+      });
+      showToast('Backup schedule saved');
+    } catch { showToast('Failed to save backup schedule', 'error'); }
+  }
+
   // ── Macro runner ───────────────────────────────────────────────────────────
   async function runMacro(cmd) {
     try {
@@ -2150,6 +2200,7 @@
   pollStatus();
   setInterval(pollStatus, 5000);
   loadSchedule();
+  loadBackupSchedule();
   connectWs();
 </script>
 </body>

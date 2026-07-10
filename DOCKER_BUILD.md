@@ -7,7 +7,7 @@ It documents the steps to build and publish the UI Docker image when you update 
 
 ## When to do this
 
-Run these steps whenever you change anything inside `sparkles-minecraft-server/ui/`
+Run these steps whenever you change anything inside `minecraft-server-ui/`
 (server.js, index.html, package.json, Dockerfile, etc.).
 You do NOT need to redo this just to update umbrel-app.yml or docker-compose.yml.
 
@@ -29,10 +29,18 @@ Enter your Docker Hub username (`exxxa`) and your password when prompted.
 
 ### 3. Build the image
 
-From the root of this project folder:
+Easiest: run the bundled script from the `minecraft-server-ui/` folder, which
+builds **and** pushes in one go (skip step 4 if you use it):
+
+```powershell
+.\scripts\build-push.ps1            # build + push :latest
+.\scripts\build-push.ps1 -NoPush    # build only
+```
+
+Or build manually from the `minecraft-server-ui/` folder:
 
 ```bash
-docker build -t exxxa/sparkles-minecraft-server-ui:latest sparkles-minecraft-server/ui
+docker build -t exxxa/sparkles-minecraft-server-ui:latest .
 ```
 
 Always push to `:latest` — you never need to change the tag or touch docker-compose.yml again.
@@ -82,4 +90,5 @@ Only these files are downloaded by Umbrel — everything else can stay local:
 | `sparkles-minecraft-server/icon.jpg` | App icon |
 | `sparkles-minecraft-server/Minecraft_background_*.jpg` | Gallery images |
 
-The `ui/` source folder and this file are gitignored and never pushed.
+The `minecraft-server-ui/` source folder builds the UI image separately (see above)
+and is not part of what Umbrel downloads from the store.

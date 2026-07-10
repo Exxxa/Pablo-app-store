@@ -19,9 +19,11 @@ const DATA_DIR = process.env.DATA_DIR || '/minecraft-data';
 const SERVER_PROPERTIES = path.join(DATA_DIR, 'server.properties');
 const WHITELIST_FILE = path.join(DATA_DIR, 'whitelist.json');
 const MC_SETTINGS_FILE = path.join(DATA_DIR, 'mc-settings.json');
+const MC_ENV_FILE = path.join(DATA_DIR, 'mc.env');
 const GAMERULES_FILE = path.join(DATA_DIR, 'mc-gamerules.json');
 const BANS_FILE = path.join(DATA_DIR, 'banned-players.json');
 const SCHEDULE_FILE = path.join(DATA_DIR, 'mc-schedule.json');
+const BACKUP_SCHEDULE_FILE = path.join(DATA_DIR, 'mc-backup-schedule.json');
 const BACKUPS_DIR = path.join(DATA_DIR, 'backups');
 const RCON_PASSWORD = process.env.RCON_PASSWORD || 'sparkles_mc_rcon';
 
@@ -40,6 +42,15 @@ const DEFAULT_MC_SETTINGS = {
 const GAMERULE_DEFAULTS = { keepInventory: false };
 
 const BASE_ENV = { EULA: 'TRUE' };
+
+// Game-config keys mirrored into mc.env for docker-compose's env_file (so a
+// compose/reboot-driven start uses the saved VERSION, never LATEST). RCON/EULA
+// are intentionally excluded — they stay inline in docker-compose.yml.
+const MC_ENV_KEYS = [
+  'VERSION', 'TYPE', 'MEMORY', 'INIT_MEMORY', 'MAX_MEMORY',
+  'LEVEL', 'USE_AIKAR_FLAGS',
+  'MODRINTH_MODPACK', 'MODRINTH_LOADER', 'MODRINTH_MODPACK_VERSION_TYPE',
+];
 
 function safeJoin(base, rel) {
   const resolvedBase = path.resolve(base);
@@ -122,6 +133,35 @@ async function sendRconCommand(command) {
   });
 }
 
+// Save the world (synchronous flush) and ask the server to stop cleanly BEFORE
+// telling Docker to stop the container — minimizes corruption on stop/recreate.
+async function gracefulStopContainer(container, timeoutSec = 115) {
+  try {
+    await sendRconCommand('save-all flush');
+    await new Promise(r => setTimeout(r, 3000));
+    await sendRconCommand('stop');
+  } catch (_) {}
+  try { await container.stop({ t: timeoutSec }); } catch (_) {}
+}
+
+// After a hard crash/kill a world can keep its session.lock, causing a
+// "world is locked" error on next start. If the container is confirmed NOT
+// running, no JVM holds the lock, so removing it is safe and unblocks startup.
+async function clearStaleWorldLock(container) {
+  try {
+    const info = await container.inspect();
+    if (info.State && info.State.Running) return;   // never touch a live world
+    const level = readMcSettings().LEVEL || 'world';
+    const lockPath = path.join(safeJoin(DATA_DIR, level), 'session.lock');
+    if (fs.existsSync(lockPath)) {
+      fs.unlinkSync(lockPath);
+      console.log(`[lock] Removed stale ${lockPath}`);
+    }
+  } catch (err) {
+    console.error('[lock] cleanup skipped:', err.message);
+  }
+}
+
 function readGamerules() {
   if (!fs.existsSync(GAMERULES_FILE)) return { ...GAMERULE_DEFAULTS };
   try { return { ...GAMERULE_DEFAULTS, ...JSON.parse(fs.readFileSync(GAMERULES_FILE, 'utf8')) }; }
@@ -145,6 +185,13 @@ function getSchedule() {
   catch { return { enabled: false, hour: 4, minute: 0 }; }
 }
 
+function getBackupSchedule() {
+  const def = { enabled: false, intervalHours: 12, keep: 5 };
+  if (!fs.existsSync(BACKUP_SCHEDULE_FILE)) return def;
+  try { return { ...def, ...JSON.parse(fs.readFileSync(BACKUP_SCHEDULE_FILE, 'utf8')) }; }
+  catch { return def; }
+}
+
 function readMcSettings() {
   if (!fs.existsSync(MC_SETTINGS_FILE)) return { ...DEFAULT_MC_SETTINGS };
   try {
@@ -156,6 +203,24 @@ function readMcSettings() {
 
 function writeMcSettings(settings) {
   fs.writeFileSync(MC_SETTINGS_FILE, JSON.stringify(settings, null, 2));
+  writeMcEnvFile(settings);
+}
+
+// Mirror the UI's saved game config into an env file that docker-compose reads via
+// env_file, so a compose-driven restart/reboot boots the container on the SAVED
+// version instead of the compose default (LATEST, which would irreversibly upgrade
+// the world). Only game-config keys go here; RCON/EULA stay inline in the compose
+// file (environment overrides env_file, so those keys must not collide).
+function writeMcEnvFile(settings) {
+  const lines = MC_ENV_KEYS
+    .filter(k => settings[k] !== '' && settings[k] !== null && settings[k] !== undefined)
+    .map(k => `${k}=${settings[k]}`);
+  try {
+    // In-place write (same inode) so it stays valid even if bind-mounted as a file.
+    fs.writeFileSync(MC_ENV_FILE, lines.length ? lines.join('\n') + '\n' : '');
+  } catch (err) {
+    console.error('[mc.env] write failed:', err.message);
+  }
 }
 
 function buildEnvArray(mcSettings) {
@@ -178,12 +243,7 @@ async function recreateContainer(mcSettings) {
     ),
   };
 
-  try {
-    await sendRconCommand('save-all');
-    await new Promise(r => setTimeout(r, 2000));
-    await sendRconCommand('stop');
-  } catch (_) {}
-  try { await container.stop({ t: 30 }); } catch (_) {}
+  await gracefulStopContainer(container);
   await container.remove();
 
   const newContainer = await docker.createContainer({
@@ -290,26 +350,29 @@ app.get('/api/status', async (_req, res) => {
 
 // ── Server controls ────────────────────────────────────────────────────────
 app.post('/api/server/start', async (_req, res) => {
-  try { const c = await getContainer(); await c.start(); res.json({ success: true }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+  try {
+    const c = await getContainer();
+    await clearStaleWorldLock(c);
+    await c.start();
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/server/stop', async (_req, res) => {
   try {
-    try {
-      await sendRconCommand('save-all');
-      await new Promise(r => setTimeout(r, 2000));
-      await sendRconCommand('stop');
-    } catch (_) {}
     const c = await getContainer();
-    await c.stop({ t: 30 });
+    await gracefulStopContainer(c);
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/server/restart', async (_req, res) => {
-  try { const c = await getContainer(); await c.restart(); res.json({ success: true }); }
-  catch (err) { res.status(500).json({ error: err.message }); }
+  try {
+    const c = await getContainer();
+    try { await sendRconCommand('save-all flush'); await new Promise(r => setTimeout(r, 3000)); } catch (_) {}
+    await c.restart({ t: 115 });
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // Pull latest image + recreate container
@@ -761,6 +824,51 @@ app.delete('/api/bans/:name', async (req, res) => {
 });
 
 // ── World backups ─────────────────────────────────────────────────────────
+
+// Zip a world into BACKUPS_DIR. If the server is running, freeze writes
+// (save-off + flush) around the copy for a consistent snapshot, then re-enable
+// saving. `auto` backups carry an _auto_ marker so retention only prunes those.
+async function createWorldBackup(worldName, { auto = false } = {}) {
+  if (!/^[a-zA-Z0-9_-]+$/.test(worldName)) throw new Error('Invalid world name');
+  const worldPath = safeJoin(DATA_DIR, worldName);
+  if (!fs.existsSync(worldPath)) throw new Error('World not found');
+  if (!fs.existsSync(BACKUPS_DIR)) fs.mkdirSync(BACKUPS_DIR, { recursive: true });
+
+  let running = false;
+  try { running = (await (await getContainer()).inspect()).State.Running; } catch (_) {}
+  if (running) {
+    try {
+      await sendRconCommand('save-off');
+      await sendRconCommand('save-all flush');
+      await new Promise(r => setTimeout(r, 3000));
+    } catch (_) {}
+  }
+  try {
+    const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const backupName = `${worldName}${auto ? '_auto' : ''}_${ts}.zip`;
+    const zip = new AdmZip();
+    zip.addLocalFolder(worldPath, worldName);
+    zip.writeZip(path.join(BACKUPS_DIR, backupName));
+    return backupName;
+  } finally {
+    if (running) { try { await sendRconCommand('save-on'); } catch (_) {} }
+  }
+}
+
+// Keep only the newest `keep` automatic backups; manual backups are left alone.
+function pruneAutoBackups(keep) {
+  try {
+    if (!fs.existsSync(BACKUPS_DIR)) return;
+    const autos = fs.readdirSync(BACKUPS_DIR)
+      .filter(f => /_auto_\d{4}-\d{2}-\d{2}T/.test(f))
+      .map(f => ({ f, m: fs.statSync(path.join(BACKUPS_DIR, f)).mtimeMs }))
+      .sort((a, b) => b.m - a.m);
+    for (const { f } of autos.slice(Math.max(0, keep))) {
+      try { fs.unlinkSync(path.join(BACKUPS_DIR, f)); } catch (_) {}
+    }
+  } catch (err) { console.error('[backup] prune failed:', err.message); }
+}
+
 app.get('/api/backups', (_req, res) => {
   try {
     if (!fs.existsSync(BACKUPS_DIR)) return res.json([]);
@@ -775,20 +883,14 @@ app.get('/api/backups', (_req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/worlds/:name/backup', (req, res) => {
+app.post('/api/worlds/:name/backup', async (req, res) => {
   try {
-    const { name } = req.params;
-    if (!/^[a-zA-Z0-9_-]+$/.test(name)) return res.status(400).json({ error: 'Invalid world name' });
-    const worldPath = path.join(DATA_DIR, name);
-    if (!fs.existsSync(worldPath)) return res.status(404).json({ error: 'World not found' });
-    if (!fs.existsSync(BACKUPS_DIR)) fs.mkdirSync(BACKUPS_DIR, { recursive: true });
-    const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-    const backupName = `${name}_${ts}.zip`;
-    const zip = new AdmZip();
-    zip.addLocalFolder(worldPath, name);
-    zip.writeZip(path.join(BACKUPS_DIR, backupName));
+    const backupName = await createWorldBackup(req.params.name);
     res.json({ success: true, backupName });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) {
+    const code = /Invalid|not found/i.test(err.message) ? 400 : 500;
+    res.status(code).json({ error: err.message });
+  }
 });
 
 app.post('/api/backups/:filename/restore', (req, res) => {
@@ -855,6 +957,21 @@ app.post('/api/schedule', (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+app.get('/api/backup-schedule', (_req, res) => res.json(getBackupSchedule()));
+
+app.post('/api/backup-schedule', (req, res) => {
+  try {
+    const { enabled, intervalHours, keep } = req.body;
+    const sched = {
+      enabled: Boolean(enabled),
+      intervalHours: Math.max(1, Math.min(168, parseInt(intervalHours, 10) || 12)),
+      keep: Math.max(1, Math.min(50, parseInt(keep, 10) || 5)),
+    };
+    fs.writeFileSync(BACKUP_SCHEDULE_FILE, JSON.stringify(sched, null, 2));
+    res.json({ success: true, schedule: sched });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 async function runScheduledRestart() {
   if (scheduledRestartInProgress) return;
   scheduledRestartInProgress = true;
@@ -870,7 +987,8 @@ async function runScheduledRestart() {
       if (cmd) try { await sendRconCommand(cmd); } catch (_) {}
     }
     const container = await getContainer();
-    await container.restart();
+    try { await sendRconCommand('save-all flush'); await new Promise(r => setTimeout(r, 3000)); } catch (_) {}
+    await container.restart({ t: 115 });
   } catch (err) { console.error('Scheduled restart failed:', err.message); }
   finally { scheduledRestartInProgress = false; }
 }
@@ -883,6 +1001,43 @@ setInterval(() => {
     runScheduledRestart();
   }
 }, 60 * 1000);
+
+// ── Scheduled backups ──────────────────────────────────────────────────────
+let scheduledBackupInProgress = false;
+
+async function maybeRunScheduledBackup() {
+  if (scheduledBackupInProgress) return;
+  const sched = getBackupSchedule();
+  if (!sched.enabled) return;
+
+  // Interval is measured from the newest existing auto backup (survives restarts).
+  let lastAuto = 0;
+  try {
+    if (fs.existsSync(BACKUPS_DIR)) {
+      for (const f of fs.readdirSync(BACKUPS_DIR)) {
+        if (/_auto_\d{4}-\d{2}-\d{2}T/.test(f)) {
+          const m = fs.statSync(path.join(BACKUPS_DIR, f)).mtimeMs;
+          if (m > lastAuto) lastAuto = m;
+        }
+      }
+    }
+  } catch (_) {}
+  if (Date.now() - lastAuto < sched.intervalHours * 3600 * 1000) return;
+
+  scheduledBackupInProgress = true;
+  try {
+    const level = readMcSettings().LEVEL || 'world';
+    const name = await createWorldBackup(level, { auto: true });
+    console.log(`[backup] Auto backup created: ${name}`);
+    pruneAutoBackups(sched.keep);
+  } catch (err) {
+    console.error('[backup] Auto backup failed:', err.message);
+  } finally {
+    scheduledBackupInProgress = false;
+  }
+}
+
+setInterval(maybeRunScheduledBackup, 60 * 1000);
 
 // ── WebSocket: Log streaming ───────────────────────────────────────────────
 wss.on('connection', async (ws) => {
@@ -946,5 +1101,8 @@ async function reconcileContainerOnStartup() {
 const PORT = process.env.PORT || 25566;
 server.listen(PORT, () => {
   console.log(`Minecraft UI on :${PORT} | Container: ${CONTAINER_NAME} | Data: ${DATA_DIR}`);
+  // Ensure mc.env exists and matches saved settings so the NEXT compose up / reboot
+  // boots the container on the saved version (not LATEST).
+  writeMcEnvFile(readMcSettings());
   setTimeout(reconcileContainerOnStartup, 10000);
 });

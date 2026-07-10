@@ -11,13 +11,21 @@ services:
     image: itzg/minecraft-server:latest
     container_name: sparkles-minecraft-server_minecraft_1
     restart: unless-stopped
+    # Give Minecraft time to save the world on host reboot / Docker shutdown
+    # (itzg forwards SIGTERM -> save + stop). Without this, Docker SIGKILLs at ~10s.
+    stop_grace_period: 120s
     environment:
       EULA: "TRUE"
-      TYPE: VANILLA
-      VERSION: LATEST
-      MEMORY: 1G
       ENABLE_RCON: "true"
       RCON_PASSWORD: "sparkles_mc_rcon"
+    # Game config (VERSION / TYPE / MEMORY / mods / ...) is written by the UI to
+    # mc.env so the user's chosen version survives reboots and the server never
+    # boots on LATEST (which would irreversibly upgrade the world). These keys are
+    # intentionally NOT in `environment:` above, because environment overrides
+    # env_file. required:false keeps first boot working before mc.env exists.
+    env_file:
+      - path: ${APP_DATA_DIR}/minecraft/mc.env
+        required: false
     ports:
       - "25565:25565"
     volumes:

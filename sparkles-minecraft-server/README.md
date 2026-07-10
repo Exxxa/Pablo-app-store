@@ -15,16 +15,24 @@ A Minecraft Java Edition server with a web-based control panel, packaged as an U
 
 ## Project Structure
 
+The app is split into two folders — the Umbrel packaging (this folder) and
+the UI app source (which builds the control-panel image):
+
 ```
-sparkles-minecraft-java/
-├── docker-compose.yml      # Two-service stack: minecraft + ui
-├── umbrel-app.yml          # Umbrel app manifest
-└── ui/
-    ├── Dockerfile          # node:20-alpine image
-    ├── package.json
-    ├── server.js           # Express + WebSocket backend
-    └── public/
-        └── index.html      # Single-page frontend
+sparkles-minecraft-server/       # Umbrel packaging (this folder)
+├── docker-compose.yml           # Two-service stack: minecraft + ui
+├── umbrel-app.yml               # Umbrel app manifest
+├── icon.jpg                     # App icon
+└── Minecraft_background_*.jpg   # Gallery images
+
+minecraft-server-ui/             # UI app source -> exxxa/sparkles-minecraft-server-ui
+├── scripts/
+│   └── build-push.ps1           # Build + push the UI image to Docker Hub
+├── Dockerfile                   # node:20-alpine image
+├── package.json
+├── server.js                    # Express + WebSocket backend
+└── public/
+    └── index.html               # Single-page frontend
 ```
 
 ## Installation (Umbrel Community App Store)
