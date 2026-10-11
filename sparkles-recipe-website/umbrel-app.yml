@@ -1,16 +1,22 @@
 manifestVersion: 1
 id: sparkles-recipe-website
-version: "1.2.0"
+version: "2.0.0"
 category: files
 name: Recipe Book
 tagline: Self-hosted family recipe manager with Claude AI integration
 icon: https://raw.githubusercontent.com/Exxxa/Pablo-app-store/master/sparkles-recipe-website/icon.png
 description: >-
-  A self-hosted recipe manager with full-text search, photo uploads,
-  wellness tracking, and Claude AI integration via MCP (Model Context Protocol).
-  Features admin panel, email whitelist for controlled registration,
-  per-user secure MCP tokens to connect Claude.ai directly to your recipes,
-  and ownership-enforced recipe management. All data stays on your Umbrel.
+  private recipe book for a family, kept at home. Each recipe is a card with
+  its photos, where it comes from, who passed it on, tags, nutrition and a
+  logbook of the times it was cooked. Search covers titles, ingredients and
+  tags, and can start from what is in the fridge or what is in season in France.
+  A cooking mode shows one step at a time with timers and keeps the screen on.
+
+
+  Each member also gets a Routine: a weekly planner for meals and workouts with
+  a daily checklist. Claude can be connected through a personal MCP link to find
+  recipes, add new ones, plan the week or log a meal on request.
+
 developer: Pierre LOPEZ
 website: ""
 dependencies: []
@@ -19,8 +25,37 @@ support: ""
 port: 2382
 gallery: []
 releaseNotes: >-
-  Initial release. Includes recipe management, photo uploads, wellness tracking,
-  Claude AI integration via MCP, admin panel, and email whitelist for controlled access.
+  A new look, a private book, and safer data.
+
+
+  For everyone:
+
+  - New design: every recipe is a card, filed by course, in light or dark.
+
+  - Cooking mode: one step at a time, with timers, and the screen stays on.
+
+  - The book is now private. You need to sign in to read recipes, notes and photos.
+
+  - You can change your password in Settings. If you forget it, ask the admin for a reset link.
+
+  - Logbook: add a note each time you cook a recipe, and record a dish cooked on an earlier day.
+
+  - Tags and any country of origin on a recipe, with matching filters in the library.
+
+  - Routine: each person sets their own weekly template for meals and workouts.
+
+  - Recently opened recipes stay readable without a network when the site is opened over HTTPS.
+
+  - Claude sees your Routine as the page shows it, can plan meals from recipes in the book, find what to cook from what you have, and record a cooked dish. Changes made by Claude and changes made on the page no longer overwrite each other.
+
+
+  For the admin:
+
+  - Backups: the database is copied every night and before each update, and a full backup (recipes, photos, accounts) can be downloaded from Administration.
+
+  - You can edit or delete any recipe. Deleting an account keeps its recipes.
+
+  - Administration has a switch to open the book to visitors again.
 defaultUsername: ""
 defaultPassword: ""
 torOnly: false
